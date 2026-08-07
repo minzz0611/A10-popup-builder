@@ -1,6 +1,3 @@
-
-
-/* ============ lib/uid.jsx ============ */
 // Simple unique id generator
 window.uid = function uid(prefix){
   return (prefix || 'id') + '_' + Math.random().toString(36).slice(2,9);
@@ -49,9 +46,6 @@ const Icons = {
   File: (p) => <IconSvg {...p} path="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" />,
 };
 window.Icons = Icons;
-
-
-/* ============ data/templates.jsx ============ */
 // Start templates. Each template returns a full projectState.
 
 function makeComp(type, data){
@@ -251,9 +245,6 @@ window.TEMPLATES = [
   { id:'release', title:'제품 릴리즈 노트', desc:'KPI + 프로세스 플로우 · 업데이트 안내에 적합', tags:['릴리즈','KPI','2개 섹션'], build: templateRelease },
   { id:'blank', title:'빈 팝업으로 시작', desc:'히어로 하나만 있는 최소 구성 · 자유롭게 채워보세요', tags:['빈 문서','최소'], build: templateBlank },
 ];
-
-
-/* ============ components/renderers.jsx ============ */
 // ============================================================
 // Popup component renderers
 // Each renderer receives { data, editing, onChange } and returns JSX.
@@ -806,9 +797,6 @@ window.DEFAULT_DATA = {
   ]}),
   'section-heading': () => ({ title:'섹션 제목', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
 };
-
-
-/* ============ lib/exporter.jsx ============ */
 // Exporter: builds a self-contained HTML file (the final popup) + a JSON edit-state file.
 // Uses ReactDOM to render into a hidden DOM, then serializes outerHTML.
 
@@ -853,6 +841,11 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .dont-show input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;margin:0;}
 .footer-bar{flex:none;border-top:1px solid var(--line);padding:16px 44px;display:flex;justify-content:space-between;align-items:center;color:#9199A6;font-size:12.3px;}
 .footer-bar .links span{margin-right:16px;}
+.sub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.sub-tabs button{border:1px solid var(--line);background:#fff;color:var(--sub);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:999px;cursor:pointer;}
+.sub-tabs button.active{background:var(--grad);border-color:transparent;color:#fff;}
+.sub-panel{display:none;}
+.sub-panel.active{display:block;}
 .reopen{position:fixed;bottom:26px;right:26px;background:var(--grad);color:#fff;border:none;padding:13px 20px;border-radius:999px;font-weight:700;font-size:13.5px;box-shadow:0 12px 30px rgba(60,80,255,.3);cursor:pointer;display:none;}
 `;
 
@@ -888,7 +881,20 @@ async function buildFinalHtml(state){
   const heroHtml = await renderComponentsToHTML(state.components, state.heroComponents || []);
   const sectionHtmls = {};
   for(const sec of (state.sidebar || [])){
-    sectionHtmls[sec.id] = await renderComponentsToHTML(state.components, sec.components || []);
+    if(sec.tabs && sec.tabs.length){
+      const tabBar = `<div class="sub-tabs">${sec.tabs.map((t,ti) => (
+        `<button class="sub-tab-btn${ti===0?' active':''}" data-sec="${sec.id}" data-subtab="${t.id}" onclick="goSubTab('${sec.id}','${t.id}')">${escapeHtml(t.label)}</button>`
+      )).join('')}</div>`;
+      let panels = '';
+      for(let ti = 0; ti < sec.tabs.length; ti++){
+        const t = sec.tabs[ti];
+        const inner = await renderComponentsToHTML(state.components, t.components || []);
+        panels += `<div class="sub-panel${ti===0?' active':''}" id="subpanel-${sec.id}-${t.id}">${inner}</div>`;
+      }
+      sectionHtmls[sec.id] = tabBar + panels;
+    } else {
+      sectionHtmls[sec.id] = await renderComponentsToHTML(state.components, sec.components || []);
+    }
   }
 
   // Group sidebar into groups
@@ -976,6 +982,13 @@ function goPanel(id){
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
   var b = document.querySelector('.nav-btn[data-panel="'+id+'"]'); if(b) b.classList.add('active');
   var c = document.querySelector('#detailScreen .content'); if(c) c.scrollTop = 0;
+}
+function goSubTab(secId, tabId){
+  var scope = document.getElementById('panel-'+secId); if(!scope) return;
+  scope.querySelectorAll('.sub-panel').forEach(function(p){p.classList.remove('active');});
+  var t = document.getElementById('subpanel-'+secId+'-'+tabId); if(t) t.classList.add('active');
+  scope.querySelectorAll('.sub-tab-btn').forEach(function(b){b.classList.remove('active');});
+  var b = scope.querySelector('.sub-tab-btn[data-subtab="'+tabId+'"]'); if(b) b.classList.add('active');
 }
 function showDetail(){
   document.getElementById('heroScreen').classList.remove('active');
@@ -1065,9 +1078,6 @@ async function downloadZipBundle(state){
 
 window.downloadZipBundle = downloadZipBundle;
 window.buildFinalHtml = buildFinalHtml;
-
-
-/* ============ builder/ContextMenu.jsx ============ */
 // Right-click context menu for canvas components
 function ContextMenu({ x, y, onClose, actions }){
   const rUseEffect = React.useEffect;
@@ -1109,9 +1119,6 @@ function ContextMenu({ x, y, onClose, actions }){
   );
 }
 window.ContextMenu = ContextMenu;
-
-
-/* ============ builder/PropertyPanel.jsx ============ */
 // Right-side property panel — edits data & style of selected component
 const { useState: pUseState } = React;
 
@@ -1152,16 +1159,91 @@ function NumberInput({ value, onChange, min, max, step=1 }){
     onChange={(e)=>onChange(Number(e.target.value))}/>;
 }
 
-function ColorPicker({ value, onChange, swatches }){
-  const opts = swatches || ['#2F6BFF','#7B5CFA','#12B886','#FF7A45','#F0416C','#1B2130','#5B6472','#2FA8FF'];
+// ------- Design-system color palette (from user-provided palette sheets) -------
+window.DESIGN_PALETTE = [
+  { group:'Text', colors:[
+    { name:'Text 01', hex:'#000000' }, { name:'Text 02', hex:'#4A4A4A' },
+    { name:'Text 03', hex:'#8C8C8C' }, { name:'Text 04', hex:'#A6A6A6' },
+    { name:'Text 05', hex:'#1C90FB' }, { name:'Text 06', hex:'#FC5356' },
+  ]},
+  { group:'Bg', colors:[
+    { name:'Bg 01', hex:'#F5F5F5' }, { name:'Bg 02', hex:'#F7F7F7' },
+    { name:'Bg 03', hex:'#FAFAFA' }, { name:'Bg 04', hex:'#F2F6F8' },
+    { name:'Bg 05', hex:'#EFF7FF' }, { name:'Bg 06', hex:'#FEF3F0' },
+  ]},
+  { group:'Icon', colors:[
+    { name:'Icon 01', hex:'#4A4A4A' }, { name:'Icon 02', hex:'#7B7B7B' },
+    { name:'Icon 03', hex:'#C4C4C4' }, { name:'Icon 04', hex:'#1C90FB' },
+    { name:'Icon 05', hex:'#436EBD' },
+  ]},
+  { group:'Border', colors:[
+    { name:'Border 01', hex:'#666666' }, { name:'Border 02', hex:'#CCCCCC' },
+    { name:'Border 03', hex:'#D9D9D9' }, { name:'Border 04', hex:'#E6E6E6' },
+    { name:'Border 05', hex:'#1C90FB' },
+  ]},
+  { group:'Status', colors:[
+    { name:'Status 01', hex:'#20C997' }, { name:'Status 02', hex:'#2DBCB5' },
+    { name:'Status 03', hex:'#39B0D2' }, { name:'Status 04', hex:'#46A3F0' },
+    { name:'Status 05', hex:'#FF8787' }, { name:'Status 06', hex:'#F8A457' },
+    { name:'Status 07', hex:'#F0C325' }, { name:'Status 08', hex:'#C8B465' },
+    { name:'Status 09', hex:'#9DA3AA' }, { name:'Status 10', hex:'#E2E2E2' },
+  ]},
+  { group:'Graph', colors:[
+    { name:'Graph 01', hex:'#4EABFA' }, { name:'Graph 02', hex:'#50CBDE' },
+    { name:'Graph 03', hex:'#AFD873' }, { name:'Graph 04', hex:'#F7AD68' },
+    { name:'Graph 05', hex:'#F5D471' }, { name:'Graph 06', hex:'#9A96FF' },
+    { name:'Graph 07', hex:'#F48DA5' }, { name:'Graph 08', hex:'#67CCB5' },
+    { name:'Graph 09', hex:'#819AFF' }, { name:'Graph 10', hex:'#D887ED' },
+  ]},
+  { group:'색상 구분값', colors:[
+    { name:'Color 01', hex:'#FF8787' }, { name:'Color 02', hex:'#FFA94D' },
+    { name:'Color 03', hex:'#FFCA55' }, { name:'Color 04', hex:'#FFE748' },
+    { name:'Color 05', hex:'#B3E270' }, { name:'Color 06', hex:'#60DA9F' },
+    { name:'Color 07', hex:'#49C8F2' }, { name:'Color 08', hex:'#53A0FE' },
+    { name:'Color 09', hex:'#8B8BFF' }, { name:'Color 10', hex:'#BC8FFF' },
+  ]},
+];
+
+function ColorPicker({ value, onChange }){
+  const [open, setOpen] = pUseState(false);
+  const wrapRef = React.useRef(null);
+
+  React.useEffect(()=>{
+    if(!open) return;
+    const onDoc = (e) => { if(wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return ()=>document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const current = window.DESIGN_PALETTE.flatMap(g=>g.colors).find(c => String(c.hex).toLowerCase() === String(value||'').toLowerCase());
+
   return (
-    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-      {opts.map(c => (
-        <button key={c}
-          onClick={()=>onChange(c)}
-          style={{width:28,height:28,borderRadius:6,background:c,border: value===c ? '2px solid #1B2130' : '2px solid transparent',cursor:'pointer',boxShadow:'inset 0 0 0 1px rgba(0,0,0,.05)'}}
-          title={c}/>
-      ))}
+    <div ref={wrapRef} style={{position:'relative'}}>
+      <button onClick={()=>setOpen(o=>!o)} type="button"
+        style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'7px 10px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',cursor:'pointer'}}>
+        <span style={{width:18,height:18,borderRadius:5,flex:'none',background:value||'#fff',border:'1px solid rgba(0,0,0,.12)'}}/>
+        <span style={{fontSize:12.5,color:'var(--ink)',fontWeight:600,flex:1,textAlign:'left',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+          {current ? current.name : (value || '색상 선택')}
+        </span>
+        <span style={{fontSize:10.5,color:'var(--mute)'}}>{value||''}</span>
+      </button>
+
+      {open && (
+        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:340,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 4px'}}>
+          {window.DESIGN_PALETTE.map(g => (
+            <div key={g.group} style={{marginBottom:10}}>
+              <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
+                {g.colors.map(c => (
+                  <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
+                    onClick={()=>{ onChange(c.hex); setOpen(false); }}
+                    style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1599,14 +1681,13 @@ function PropertyPanel({ state, selectedId, onUpdateComp, onProjectUpdate, onDel
   );
 }
 window.PropertyPanel = PropertyPanel;
+// Left sidebar - unified panel: 목차(outline, top) + 컴포넌트(palette, bottom), resizable
+const { useState: lUseState, useRef: lUseRef } = React;
 
-
-/* ============ builder/ComponentLibrary.jsx ============ */
-// Left sidebar - component palette + section navigator
-const { useState: lUseState } = React;
-
-function ComponentLibrary({ state, activeSectionId, onAddComponent, onSelectSection, onProjectUpdate, targetSection }){
-  const [tab, setTab] = lUseState('components'); // components | sections
+function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent, onSelectSection, onSelectTab, onAddTab, onDeleteTab, onProjectUpdate, targetSection }){
+  const containerRef = lUseRef(null);
+  const [outlineHeight, setOutlineHeight] = lUseState(300); // px height of 목차 pane
+  const draggingRef = lUseRef(false);
 
   const grouped = {};
   window.COMPONENT_META.forEach(m => {
@@ -1618,63 +1699,114 @@ function ComponentLibrary({ state, activeSectionId, onAddComponent, onSelectSect
     e.dataTransfer.effectAllowed = 'copy';
   };
 
+  // ------- Target label (where a clicked/dropped component will land) -------
+  let targetLabel = '히어로 화면';
+  const activeSec = (state.sidebar||[]).find(s => s.id === activeSectionId);
+  if(activeSec){
+    targetLabel = activeSec.label;
+    if(activeTabId && activeSec.tabs){
+      const t = activeSec.tabs.find(tt => tt.id === activeTabId);
+      if(t) targetLabel = `${activeSec.label} · ${t.label}`;
+    }
+  }
+
+  // ------- Resizer drag handling -------
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    const startY = e.clientY;
+    const startH = outlineHeight;
+    document.body.style.cursor = 'row-resize';
+    const onMove = (ev) => {
+      if(!draggingRef.current) return;
+      const containerH = containerRef.current ? containerRef.current.clientHeight : 640;
+      const minTop = 140, minBottom = 180;
+      let next = startH + (ev.clientY - startY);
+      next = Math.max(minTop, Math.min(next, containerH - minBottom));
+      setOutlineHeight(next);
+    };
+    const onUp = () => {
+      draggingRef.current = false;
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#F8F9FB',borderRight:'1px solid var(--line)'}}>
-      {/* Tabs */}
-      <div style={{display:'flex',padding:'12px 12px 0',gap:4}}>
-        <button onClick={()=>setTab('components')}
-          style={{flex:1,padding:'8px 10px',border:'none',background: tab==='components' ? '#fff' : 'transparent',color: tab==='components' ? 'var(--ink)':'var(--sub)',borderRadius:8,fontSize:12.5,fontWeight:700,cursor:'pointer',boxShadow: tab==='components' ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-          컴포넌트
-        </button>
-        <button onClick={()=>setTab('sections')}
-          style={{flex:1,padding:'8px 10px',border:'none',background: tab==='sections' ? '#fff' : 'transparent',color: tab==='sections' ? 'var(--ink)':'var(--sub)',borderRadius:8,fontSize:12.5,fontWeight:700,cursor:'pointer',boxShadow: tab==='sections' ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-          섹션 트리
-        </button>
+    <div ref={containerRef} style={{display:'flex',flexDirection:'column',height:'100%',minHeight:0,background:'#F8F9FB',borderRight:'1px solid var(--line)'}}>
+
+      {/* ===== 목차 (outline) pane ===== */}
+      <div style={{height:outlineHeight,flex:'none',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div style={{flex:'none',padding:'13px 14px 10px',borderBottom:'1px solid var(--line)',background:'#F8F9FB'}}>
+          <div style={{fontSize:12.5,fontWeight:800,color:'var(--ink)',letterSpacing:'-.01em'}}>목차</div>
+        </div>
+        <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'10px 12px'}}>
+          <SectionsTree
+            state={state}
+            activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
+            onSelectSection={onSelectSection}
+            onSelectTab={onSelectTab}
+            onAddTab={onAddTab}
+            onDeleteTab={onDeleteTab}
+            onProjectUpdate={onProjectUpdate}
+          />
+        </div>
       </div>
 
-      <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
-        {tab === 'components' ? (
-          <>
-            <div style={{fontSize:11,color:'var(--mute)',lineHeight:1.5,marginBottom:10,padding:'0 4px'}}>
-              드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{
-                (state.sidebar||[]).find(s=>s.id===targetSection)?.label || '히어로 화면'
-              }</b>에 추가됩니다.
-            </div>
-            {Object.keys(grouped).map(g => (
-              <div key={g} style={{marginBottom:14}}>
-                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'0 4px 6px'}}>{g}</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-                  {grouped[g].map(m => (
-                    <div key={m.type}
-                      draggable
-                      onDragStart={(e)=>handleDragStart(e, m.type)}
-                      onClick={()=>onAddComponent(m.type)}
-                      style={{
-                        background:'#fff',border:'1px solid var(--line)',borderRadius:9,
-                        padding:'10px 10px',cursor:'grab',transition:'.15s',
-                        display:'flex',flexDirection:'column',gap:5,minHeight:66,
-                      }}
-                      onMouseEnter={(e)=>{e.currentTarget.style.borderColor='var(--blue)';e.currentTarget.style.background='linear-gradient(180deg,#F8FAFF,#fff)';}}
-                      onMouseLeave={(e)=>{e.currentTarget.style.borderColor='var(--line)';e.currentTarget.style.background='#fff';}}
-                      title={m.desc}
-                    >
-                      <div style={{color:'var(--blue-dark)'}}>{window.Icons[m.icon]({size:16})}</div>
-                      <div style={{fontSize:11.5,fontWeight:700,color:'var(--ink)',lineHeight:1.3}}>{m.label}</div>
-                    </div>
-                  ))}
-                </div>
+      {/* ===== Resizer ===== */}
+      <div
+        onMouseDown={handleResizeStart}
+        title="드래그하여 영역 크기 조절"
+        style={{flex:'none',height:9,cursor:'row-resize',position:'relative',background:'#F1F2F5',borderTop:'1px solid var(--line)',borderBottom:'1px solid var(--line)'}}
+      >
+        <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',width:32,height:3,borderRadius:3,background:'var(--mute)',opacity:.5}}/>
+      </div>
+
+      {/* ===== 컴포넌트 (palette) pane ===== */}
+      <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+        <div style={{flex:'none',padding:'12px 14px 8px',borderBottom:'1px solid var(--line)'}}>
+          <div style={{fontSize:12.5,fontWeight:800,color:'var(--ink)',letterSpacing:'-.01em',marginBottom:5}}>컴포넌트</div>
+          <div style={{fontSize:11,color:'var(--mute)',lineHeight:1.5}}>
+            드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{targetLabel}</b>에 추가됩니다.
+          </div>
+        </div>
+        <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
+          {Object.keys(grouped).map(g => (
+            <div key={g} style={{marginBottom:14}}>
+              <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'0 4px 6px'}}>{g}</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                {grouped[g].map(m => (
+                  <div key={m.type}
+                    draggable
+                    onDragStart={(e)=>handleDragStart(e, m.type)}
+                    onClick={()=>onAddComponent(m.type)}
+                    style={{
+                      background:'#fff',border:'1px solid var(--line)',borderRadius:9,
+                      padding:'10px 10px',cursor:'grab',transition:'.15s',
+                      display:'flex',flexDirection:'column',gap:5,minHeight:66,
+                    }}
+                    onMouseEnter={(e)=>{e.currentTarget.style.borderColor='var(--blue)';e.currentTarget.style.background='linear-gradient(180deg,#F8FAFF,#fff)';}}
+                    onMouseLeave={(e)=>{e.currentTarget.style.borderColor='var(--line)';e.currentTarget.style.background='#fff';}}
+                    title={m.desc}
+                  >
+                    <div style={{color:'var(--blue-dark)'}}>{window.Icons[m.icon]({size:16})}</div>
+                    <div style={{fontSize:11.5,fontWeight:700,color:'var(--ink)',lineHeight:1.3}}>{m.label}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </>
-        ) : (
-          <SectionsTree state={state} activeSectionId={activeSectionId} onSelectSection={onSelectSection} onProjectUpdate={onProjectUpdate}/>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function SectionsTree({ state, activeSectionId, onSelectSection, onProjectUpdate }){
+function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, onSelectTab, onAddTab, onDeleteTab, onProjectUpdate }){
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
@@ -1688,23 +1820,50 @@ function SectionsTree({ state, activeSectionId, onSelectSection, onProjectUpdate
   rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'6px 4px 4px'}}>사이드메뉴 섹션</div>);
   (state.sidebar||[]).forEach(sec => {
     const active = activeSectionId === sec.id;
+    const tabs = sec.tabs || [];
     rows.push(
-      <div key={sec.id} style={{display:'flex',alignItems:'center',gap:4,marginBottom:2}}>
-        <button onClick={()=>onSelectSection(sec.id)}
-          style={{display:'flex',alignItems:'center',gap:8,flex:1,textAlign:'left',padding:'8px 10px',border:'none',background: active ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight: active?700:600,color: active ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',boxShadow: active ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-          <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{sec.label}</span>
-          <span style={{fontSize:11,color:'var(--mute)'}}>{sec.components.length}</span>
-        </button>
-        <button title="삭제" onClick={()=>{
-          if(!confirm('이 섹션을 삭제하시겠습니까? 포함된 컴포넌트도 제거됩니다.')) return;
-          const sidebar = state.sidebar.filter(s => s.id !== sec.id);
-          const components = {...state.components};
-          sec.components.forEach(cid => { delete components[cid]; });
-          const patch = { sidebar, components };
-          if(active) patch.activeSectionId = sidebar[0]?.id || null;
-          onProjectUpdate(patch);
-        }}
-          style={{border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:12}}>✕</button>
+      <div key={sec.id} style={{marginBottom:4}}>
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          <button onClick={()=>onSelectSection(sec.id)}
+            style={{display:'flex',alignItems:'center',gap:8,flex:1,textAlign:'left',padding:'8px 10px',border:'none',background: (active && !activeTabId) ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+            <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{sec.label}</span>
+            {!tabs.length && <span style={{fontSize:11,color:'var(--mute)'}}>{sec.components.length}</span>}
+          </button>
+          <button title="삭제" onClick={()=>{
+            if(!confirm('이 섹션을 삭제하시겠습니까? 포함된 컴포넌트도 제거됩니다.')) return;
+            const sidebar = state.sidebar.filter(s => s.id !== sec.id);
+            const components = {...state.components};
+            sec.components.forEach(cid => { delete components[cid]; });
+            (sec.tabs||[]).forEach(t => t.components.forEach(cid => { delete components[cid]; }));
+            const patch = { sidebar, components };
+            if(active) patch.activeSectionId = sidebar[0]?.id || null;
+            onProjectUpdate(patch);
+          }}
+            style={{border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:12}}>✕</button>
+        </div>
+
+        {/* 하위 탭 */}
+        <div style={{marginLeft:18,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
+          {tabs.map(t => {
+            const tActive = active && activeTabId === t.id;
+            return (
+              <div key={t.id} style={{display:'flex',alignItems:'center',gap:4}}>
+                <button onClick={()=>onSelectTab(sec.id, t.id)}
+                  style={{display:'flex',alignItems:'center',gap:6,flex:1,textAlign:'left',padding:'6px 9px',border:'none',background: tActive ? '#fff' : 'transparent',borderRadius:7,fontSize:12,fontWeight: tActive?700:500,color: tActive ? 'var(--blue-dark)':'var(--sub)',cursor:'pointer',boxShadow: tActive ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+                  <span style={{opacity:.6}}>↳</span>
+                  <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.label}</span>
+                  <span style={{fontSize:10.5,color:'var(--mute)'}}>{t.components.length}</span>
+                </button>
+                <button title="하위 탭 삭제" onClick={()=>onDeleteTab(sec.id, t.id)}
+                  style={{border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:3,fontSize:11}}>✕</button>
+              </div>
+            );
+          })}
+          <button onClick={()=>onAddTab(sec.id)}
+            style={{width:'100%',textAlign:'left',padding:'5px 9px',marginTop:2,marginBottom:6,border:'none',background:'transparent',color:'var(--blue-dark)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
+            + 하위 탭 추가
+          </button>
+        </div>
       </div>
     );
   });
@@ -1726,9 +1885,6 @@ function SectionsTree({ state, activeSectionId, onSelectSection, onProjectUpdate
 }
 
 window.ComponentLibrary = ComponentLibrary;
-
-
-/* ============ builder/Canvas.jsx ============ */
 // Center canvas - shows the popup preview WITH editing affordances (drag, select, resize handles)
 
 const { useState: cUseState, useRef: cUseRef, useEffect: cUseEffect } = React;
@@ -1782,15 +1938,18 @@ function CompFrame({ comp, selected, onSelect, onContextMenu, isDragOver, dragOv
 // ============================================================
 // Canvas
 // ============================================================
-function Canvas({ state, selectedId, activeSectionId, onSelect, onUpdateComp, onReorder, onContextMenu, targetSection, previewOnly }){
+function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onReorder, onContextMenu, targetSection, previewOnly }){
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
 
-  // Current list of components based on active section
+  const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
+  const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
+
+  // Current list of components based on active section (and sub-tab, if any)
   const componentList = activeSectionId === null
     ? (state.heroComponents || [])
-    : ((state.sidebar||[]).find(s=>s.id===activeSectionId)?.components || []);
+    : (activeTab ? activeTab.components : (activeSec?.components || []));
 
   const editing = !previewOnly;
 
@@ -1898,7 +2057,7 @@ function Canvas({ state, selectedId, activeSectionId, onSelect, onUpdateComp, on
     <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
       <div style={{maxWidth:1180, margin:'0 auto'}}>
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
-          📄 상세 화면 · {(state.sidebar||[]).find(s=>s.id===activeSectionId)?.label}
+          📄 상세 화면 · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', minHeight:600}}
           onClick={()=>onSelect(null)}>
@@ -1914,6 +2073,16 @@ function Canvas({ state, selectedId, activeSectionId, onSelect, onUpdateComp, on
               onDragOver={handleContainerDragOver}
               onDrop={handleContainerDrop}
             >
+              {!!(activeSec?.tabs?.length) && (
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
+                  {activeSec.tabs.map(t => (
+                    <button key={t.id} onClick={()=>onSelectTab(t.id)}
+                      style={{border:'1px solid var(--line)',background: t.id===activeTabId ? 'var(--grad)' : '#fff',color: t.id===activeTabId ? '#fff' : 'var(--sub)',borderColor: t.id===activeTabId ? 'transparent' : 'var(--line)',fontWeight:700,fontSize:12.5,padding:'8px 15px',borderRadius:999,cursor:'pointer'}}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
                   <div style={{fontSize:32, marginBottom:12}}>📥</div>
@@ -1986,13 +2155,10 @@ function PopupFooter({ state }){
 window.Canvas = Canvas;
 window.SidebarNav = SidebarNav;
 window.PopupFooter = PopupFooter;
-
-
-/* ============ builder/Toolbar.jsx ============ */
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenPreview, onNewProject, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
 
@@ -2022,7 +2188,13 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenP
   return (
     <div style={{height:56, flex:'none', background:'#fff', borderBottom:'1px solid var(--line)', display:'flex', alignItems:'center', padding:'0 18px', gap:14, zIndex:5}}>
       {/* Logo */}
-      <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <div
+        style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',userSelect:'none',opacity:1,transition:'opacity .15s'}}
+        onClick={onGoHome}
+        onMouseEnter={(e)=>{e.currentTarget.style.opacity=0.75}}
+        onMouseLeave={(e)=>{e.currentTarget.style.opacity=1}}
+        title="홈으로 이동"
+      >
         <div style={{width:30,height:30,borderRadius:8,background:'var(--grad)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:14}}>P</div>
         <div style={{fontWeight:800,fontSize:15,color:'var(--ink)',letterSpacing:'-.01em'}}>PopBuilder</div>
       </div>
@@ -2087,9 +2259,6 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenP
 }
 
 window.Toolbar = Toolbar;
-
-
-/* ============ builder/PreviewModal.jsx ============ */
 // Full popup preview modal - shows the final output exactly as end users will see it.
 // Non-editable: pure output.
 const { useState: pmUseState } = React;
@@ -2183,9 +2352,6 @@ function HeroWithCta({ comp, onCta }){
 }
 
 window.PreviewModal = PreviewModal;
-
-
-/* ============ builder/TemplateGallery.jsx ============ */
 // Template selection screen shown on first entry or when creating a new project.
 const { useState: tgUseState } = React;
 
@@ -2346,9 +2512,6 @@ function TemplatePreview({ id }){
 }
 
 window.TemplateGallery = TemplateGallery;
-
-
-/* ============ app.jsx ============ */
 // ============================================================
 // PopBuilder root
 // ============================================================
@@ -2362,6 +2525,7 @@ function App(){
   const [showGallery, setShowGallery] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [activeSectionId, setActiveSectionId] = useState(null); // null = hero screen
+  const [activeTabId, setActiveTabId] = useState(null); // sub-tab within active section, if any
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
@@ -2439,6 +2603,7 @@ function App(){
     history.current = { past:[], future:[] };
     setState(st);
     setActiveSectionId(null);
+    setActiveTabId(null);
     setSelectedId(null);
     setShowGallery(false);
   };
@@ -2447,6 +2612,7 @@ function App(){
     history.current = { past:[], future:[] };
     setState(obj);
     setActiveSectionId(obj.activeSectionId && obj.sidebar?.find(s=>s.id===obj.activeSectionId) ? obj.activeSectionId : null);
+    setActiveTabId(null);
     setSelectedId(null);
     setShowGallery(false);
   };
@@ -2454,6 +2620,61 @@ function App(){
   const newProject = () => {
     if(!confirm('현재 편집 중인 프로젝트를 저장 후 새 프로젝트를 시작하시겠어요?\n(현재 프로젝트는 브라우저에 남지 않습니다. 필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
     setShowGallery(true);
+  };
+
+  const goHome = () => {
+    if(!confirm('저장하지 않은 변경사항은 사라집니다.\n홈으로 이동하시겠어요? (필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
+    setShowGallery(true);
+  };
+
+  // ------- Section / sub-tab navigation -------
+  const selectSection = (id) => {
+    setSelectedId(null);
+    if(id === null){
+      setActiveSectionId(null);
+      setActiveTabId(null);
+      return;
+    }
+    const sec = (state?.sidebar||[]).find(s => s.id === id);
+    const firstTab = sec?.tabs?.[0]?.id || null;
+    setActiveSectionId(id);
+    setActiveTabId(firstTab);
+    commit(prev=>({...prev, activeSectionId: id}), {silent:true});
+  };
+
+  const selectTab = (sectionId, tabId) => {
+    setSelectedId(null);
+    setActiveSectionId(sectionId);
+    setActiveTabId(tabId);
+    commit(prev=>({...prev, activeSectionId: sectionId}), {silent:true});
+  };
+
+  const addTab = (sectionId) => {
+    const newTab = { id: window.uid('tab'), label:'새 탭', components: [] };
+    commit(prev => ({
+      ...prev,
+      sidebar: prev.sidebar.map(s => s.id === sectionId ? { ...s, tabs: [...(s.tabs||[]), newTab] } : s),
+    }));
+    setActiveSectionId(sectionId);
+    setActiveTabId(newTab.id);
+    setSelectedId(null);
+  };
+
+  const deleteTab = (sectionId, tabId) => {
+    if(!confirm('이 하위 탭을 삭제하시겠습니까? 포함된 컴포넌트도 함께 제거됩니다.')) return;
+    commit(prev => {
+      const sec = prev.sidebar.find(s => s.id === sectionId);
+      if(!sec) return prev;
+      const tab = (sec.tabs||[]).find(t => t.id === tabId);
+      const components = { ...prev.components };
+      (tab?.components||[]).forEach(cid => { delete components[cid]; });
+      const sidebar = prev.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).filter(t => t.id !== tabId) } : s);
+      return { ...prev, components, sidebar };
+    });
+    if(activeSectionId === sectionId && activeTabId === tabId){
+      setActiveTabId(null);
+      setSelectedId(null);
+    }
   };
 
   // ------- Component ops -------
@@ -2466,7 +2687,10 @@ function App(){
 
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
-    if(patch.activeSectionId !== undefined) setActiveSectionId(patch.activeSectionId);
+    if(patch.activeSectionId !== undefined){
+      setActiveSectionId(patch.activeSectionId);
+      setActiveTabId(null);
+    }
   };
 
   const handleAddComponent = (type, position='end') => {
@@ -2481,7 +2705,14 @@ function App(){
       if(activeSectionId === null){
         return { ...prev, components, heroComponents: [...(prev.heroComponents||[]), newComp.id] };
       } else {
-        const sidebar = prev.sidebar.map(s => s.id === activeSectionId ? { ...s, components: [...s.components, newComp.id] } : s);
+        const sidebar = prev.sidebar.map(s => {
+          if(s.id !== activeSectionId) return s;
+          if(activeTabId){
+            const tabs = (s.tabs||[]).map(t => t.id === activeTabId ? { ...t, components: [...t.components, newComp.id] } : t);
+            return { ...s, tabs };
+          }
+          return { ...s, components: [...s.components, newComp.id] };
+        });
         return { ...prev, components, sidebar };
       }
     });
@@ -2493,7 +2724,11 @@ function App(){
       const components = { ...prev.components };
       delete components[id];
       const heroComponents = (prev.heroComponents||[]).filter(x => x !== id);
-      const sidebar = (prev.sidebar||[]).map(s => ({ ...s, components: s.components.filter(x => x !== id) }));
+      const sidebar = (prev.sidebar||[]).map(s => ({
+        ...s,
+        components: s.components.filter(x => x !== id),
+        tabs: (s.tabs||[]).map(t => ({ ...t, components: t.components.filter(x => x !== id) })),
+      }));
       return { ...prev, components, heroComponents, sidebar };
     });
     if(selectedId === id) setSelectedId(null);
@@ -2512,12 +2747,30 @@ function App(){
         hc.splice(idx+1, 0, clone.id);
         return { ...prev, components, heroComponents: hc };
       } else {
+        let placed = false;
         const sidebar = prev.sidebar.map(s => {
+          if(placed) return s;
           const idx = s.components.indexOf(id);
-          if(idx < 0) return s;
-          const arr = [...s.components];
-          arr.splice(idx+1, 0, clone.id);
-          return { ...s, components: arr };
+          if(idx >= 0){
+            placed = true;
+            const arr = [...s.components];
+            arr.splice(idx+1, 0, clone.id);
+            return { ...s, components: arr };
+          }
+          if(s.tabs && s.tabs.length){
+            let tabPlaced = false;
+            const tabs = s.tabs.map(t => {
+              if(tabPlaced) return t;
+              const tidx = t.components.indexOf(id);
+              if(tidx < 0) return t;
+              tabPlaced = true; placed = true;
+              const arr = [...t.components];
+              arr.splice(tidx+1, 0, clone.id);
+              return { ...t, components: arr };
+            });
+            if(tabPlaced) return { ...s, tabs };
+          }
+          return s;
         });
         return { ...prev, components, sidebar };
       }
@@ -2535,7 +2788,11 @@ function App(){
       return {
         ...prev,
         heroComponents: move(prev.heroComponents || []),
-        sidebar: (prev.sidebar||[]).map(s => ({ ...s, components: move(s.components) })),
+        sidebar: (prev.sidebar||[]).map(s => ({
+          ...s,
+          components: move(s.components),
+          tabs: (s.tabs||[]).map(t => ({ ...t, components: move(t.components) })),
+        })),
       };
     });
   };
@@ -2560,24 +2817,36 @@ function App(){
         if(activeSectionId === null){
           return { ...prev, components, heroComponents: insertInto(prev.heroComponents||[]) };
         } else {
-          const sidebar = prev.sidebar.map(s => s.id === activeSectionId ? { ...s, components: insertInto(s.components) } : s);
+          const sidebar = prev.sidebar.map(s => {
+            if(s.id !== activeSectionId) return s;
+            if(activeTabId){
+              const tabs = (s.tabs||[]).map(t => t.id === activeTabId ? { ...t, components: insertInto(t.components) } : t);
+              return { ...s, tabs };
+            }
+            return { ...s, components: insertInto(s.components) };
+          });
           return { ...prev, components, sidebar };
         }
       });
       setSelectedId(newComp.id);
     } else if(action === 'move'){
       commit(prev => {
-        // Find which list contains sourceId & targetId
+        // Find which list contains sourceId & targetId (hero / section / section-tab)
         const findList = (id) => {
           if((prev.heroComponents||[]).includes(id)) return { kind:'hero' };
-          for(const s of prev.sidebar||[]) if(s.components.includes(id)) return { kind:'sec', sec: s.id };
+          for(const s of prev.sidebar||[]){
+            if(s.components.includes(id)) return { kind:'sec', sec: s.id };
+            for(const t of s.tabs||[]) if(t.components.includes(id)) return { kind:'tab', sec: s.id, tab: t.id };
+          }
           return null;
         };
         const src = findList(sourceId);
         const tgt = findList(targetId);
         if(!src || !tgt) return prev;
         // For simplicity: only allow reorder within the same list (matches "화면 내 순서 변경")
-        if(src.kind !== tgt.kind || (src.kind==='sec' && src.sec !== tgt.sec)) return prev;
+        if(src.kind !== tgt.kind) return prev;
+        if(src.kind === 'sec' && src.sec !== tgt.sec) return prev;
+        if(src.kind === 'tab' && (src.sec !== tgt.sec || src.tab !== tgt.tab)) return prev;
 
         const move = (arr) => {
           const from = arr.indexOf(sourceId);
@@ -2590,8 +2859,11 @@ function App(){
         };
         if(src.kind === 'hero'){
           return { ...prev, heroComponents: move(prev.heroComponents||[]) };
-        } else {
+        } else if(src.kind === 'sec'){
           const sidebar = prev.sidebar.map(s => s.id === src.sec ? { ...s, components: move(s.components) } : s);
+          return { ...prev, sidebar };
+        } else {
+          const sidebar = prev.sidebar.map(s => s.id === src.sec ? { ...s, tabs: s.tabs.map(t => t.id === src.tab ? { ...t, components: move(t.components) } : t) } : s);
           return { ...prev, sidebar };
         }
       });
@@ -2650,6 +2922,7 @@ function App(){
         onLoadJson={loadJson}
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
+        onGoHome={goHome}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
@@ -2663,13 +2936,13 @@ function App(){
           <window.ComponentLibrary
             state={state}
             activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
             targetSection={activeSectionId}
             onAddComponent={handleAddComponent}
-            onSelectSection={(id)=>{
-              setActiveSectionId(id);
-              setSelectedId(null);
-              if(id) commit(prev=>({...prev, activeSectionId: id}), {silent:true});
-            }}
+            onSelectSection={selectSection}
+            onSelectTab={selectTab}
+            onAddTab={addTab}
+            onDeleteTab={deleteTab}
             onProjectUpdate={handleProjectUpdate}
           />
         </div>
@@ -2680,7 +2953,9 @@ function App(){
             state={state}
             selectedId={selectedId}
             activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
             onSelect={setSelectedId}
+            onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
             onReorder={handleReorder}
             onContextMenu={handleContextMenu}

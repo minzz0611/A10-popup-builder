@@ -11,6 +11,7 @@ function App(){
   const [showGallery, setShowGallery] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [activeSectionId, setActiveSectionId] = useState(null); // null = hero screen
+  const [activeTabId, setActiveTabId] = useState(null); // sub-tab within active section, if any
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
@@ -88,6 +89,7 @@ function App(){
     history.current = { past:[], future:[] };
     setState(st);
     setActiveSectionId(null);
+    setActiveTabId(null);
     setSelectedId(null);
     setShowGallery(false);
   };
@@ -96,6 +98,7 @@ function App(){
     history.current = { past:[], future:[] };
     setState(obj);
     setActiveSectionId(obj.activeSectionId && obj.sidebar?.find(s=>s.id===obj.activeSectionId) ? obj.activeSectionId : null);
+    setActiveTabId(null);
     setSelectedId(null);
     setShowGallery(false);
   };
@@ -103,6 +106,61 @@ function App(){
   const newProject = () => {
     if(!confirm('현재 편집 중인 프로젝트를 저장 후 새 프로젝트를 시작하시겠어요?\n(현재 프로젝트는 브라우저에 남지 않습니다. 필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
     setShowGallery(true);
+  };
+
+  const goHome = () => {
+    if(!confirm('저장하지 않은 변경사항은 사라집니다.\n홈으로 이동하시겠어요? (필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
+    setShowGallery(true);
+  };
+
+  // ------- Section / sub-tab navigation -------
+  const selectSection = (id) => {
+    setSelectedId(null);
+    if(id === null){
+      setActiveSectionId(null);
+      setActiveTabId(null);
+      return;
+    }
+    const sec = (state?.sidebar||[]).find(s => s.id === id);
+    const firstTab = sec?.tabs?.[0]?.id || null;
+    setActiveSectionId(id);
+    setActiveTabId(firstTab);
+    commit(prev=>({...prev, activeSectionId: id}), {silent:true});
+  };
+
+  const selectTab = (sectionId, tabId) => {
+    setSelectedId(null);
+    setActiveSectionId(sectionId);
+    setActiveTabId(tabId);
+    commit(prev=>({...prev, activeSectionId: sectionId}), {silent:true});
+  };
+
+  const addTab = (sectionId) => {
+    const newTab = { id: window.uid('tab'), label:'새 탭', components: [] };
+    commit(prev => ({
+      ...prev,
+      sidebar: prev.sidebar.map(s => s.id === sectionId ? { ...s, tabs: [...(s.tabs||[]), newTab] } : s),
+    }));
+    setActiveSectionId(sectionId);
+    setActiveTabId(newTab.id);
+    setSelectedId(null);
+  };
+
+  const deleteTab = (sectionId, tabId) => {
+    if(!confirm('이 하위 탭을 삭제하시겠습니까? 포함된 컴포넌트도 함께 제거됩니다.')) return;
+    commit(prev => {
+      const sec = prev.sidebar.find(s => s.id === sectionId);
+      if(!sec) return prev;
+      const tab = (sec.tabs||[]).find(t => t.id === tabId);
+      const components = { ...prev.components };
+      (tab?.components||[]).forEach(cid => { delete components[cid]; });
+      const sidebar = prev.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).filter(t => t.id !== tabId) } : s);
+      return { ...prev, components, sidebar };
+    });
+    if(activeSectionId === sectionId && activeTabId === tabId){
+      setActiveTabId(null);
+      setSelectedId(null);
+    }
   };
 
   // ------- Component ops -------
@@ -115,7 +173,10 @@ function App(){
 
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
-    if(patch.activeSectionId !== undefined) setActiveSectionId(patch.activeSectionId);
+    if(patch.activeSectionId !== undefined){
+      setActiveSectionId(patch.activeSectionId);
+      setActiveTabId(null);
+    }
   };
 
   const handleAddComponent = (type, position='end') => {
@@ -130,7 +191,14 @@ function App(){
       if(activeSectionId === null){
         return { ...prev, components, heroComponents: [...(prev.heroComponents||[]), newComp.id] };
       } else {
-        const sidebar = prev.sidebar.map(s => s.id === activeSectionId ? { ...s, components: [...s.components, newComp.id] } : s);
+        const sidebar = prev.sidebar.map(s => {
+          if(s.id !== activeSectionId) return s;
+          if(activeTabId){
+            const tabs = (s.tabs||[]).map(t => t.id === activeTabId ? { ...t, components: [...t.components, newComp.id] } : t);
+            return { ...s, tabs };
+          }
+          return { ...s, components: [...s.components, newComp.id] };
+        });
         return { ...prev, components, sidebar };
       }
     });
@@ -142,7 +210,11 @@ function App(){
       const components = { ...prev.components };
       delete components[id];
       const heroComponents = (prev.heroComponents||[]).filter(x => x !== id);
-      const sidebar = (prev.sidebar||[]).map(s => ({ ...s, components: s.components.filter(x => x !== id) }));
+      const sidebar = (prev.sidebar||[]).map(s => ({
+        ...s,
+        components: s.components.filter(x => x !== id),
+        tabs: (s.tabs||[]).map(t => ({ ...t, components: t.components.filter(x => x !== id) })),
+      }));
       return { ...prev, components, heroComponents, sidebar };
     });
     if(selectedId === id) setSelectedId(null);
@@ -161,12 +233,30 @@ function App(){
         hc.splice(idx+1, 0, clone.id);
         return { ...prev, components, heroComponents: hc };
       } else {
+        let placed = false;
         const sidebar = prev.sidebar.map(s => {
+          if(placed) return s;
           const idx = s.components.indexOf(id);
-          if(idx < 0) return s;
-          const arr = [...s.components];
-          arr.splice(idx+1, 0, clone.id);
-          return { ...s, components: arr };
+          if(idx >= 0){
+            placed = true;
+            const arr = [...s.components];
+            arr.splice(idx+1, 0, clone.id);
+            return { ...s, components: arr };
+          }
+          if(s.tabs && s.tabs.length){
+            let tabPlaced = false;
+            const tabs = s.tabs.map(t => {
+              if(tabPlaced) return t;
+              const tidx = t.components.indexOf(id);
+              if(tidx < 0) return t;
+              tabPlaced = true; placed = true;
+              const arr = [...t.components];
+              arr.splice(tidx+1, 0, clone.id);
+              return { ...t, components: arr };
+            });
+            if(tabPlaced) return { ...s, tabs };
+          }
+          return s;
         });
         return { ...prev, components, sidebar };
       }
@@ -184,7 +274,11 @@ function App(){
       return {
         ...prev,
         heroComponents: move(prev.heroComponents || []),
-        sidebar: (prev.sidebar||[]).map(s => ({ ...s, components: move(s.components) })),
+        sidebar: (prev.sidebar||[]).map(s => ({
+          ...s,
+          components: move(s.components),
+          tabs: (s.tabs||[]).map(t => ({ ...t, components: move(t.components) })),
+        })),
       };
     });
   };
@@ -209,24 +303,36 @@ function App(){
         if(activeSectionId === null){
           return { ...prev, components, heroComponents: insertInto(prev.heroComponents||[]) };
         } else {
-          const sidebar = prev.sidebar.map(s => s.id === activeSectionId ? { ...s, components: insertInto(s.components) } : s);
+          const sidebar = prev.sidebar.map(s => {
+            if(s.id !== activeSectionId) return s;
+            if(activeTabId){
+              const tabs = (s.tabs||[]).map(t => t.id === activeTabId ? { ...t, components: insertInto(t.components) } : t);
+              return { ...s, tabs };
+            }
+            return { ...s, components: insertInto(s.components) };
+          });
           return { ...prev, components, sidebar };
         }
       });
       setSelectedId(newComp.id);
     } else if(action === 'move'){
       commit(prev => {
-        // Find which list contains sourceId & targetId
+        // Find which list contains sourceId & targetId (hero / section / section-tab)
         const findList = (id) => {
           if((prev.heroComponents||[]).includes(id)) return { kind:'hero' };
-          for(const s of prev.sidebar||[]) if(s.components.includes(id)) return { kind:'sec', sec: s.id };
+          for(const s of prev.sidebar||[]){
+            if(s.components.includes(id)) return { kind:'sec', sec: s.id };
+            for(const t of s.tabs||[]) if(t.components.includes(id)) return { kind:'tab', sec: s.id, tab: t.id };
+          }
           return null;
         };
         const src = findList(sourceId);
         const tgt = findList(targetId);
         if(!src || !tgt) return prev;
         // For simplicity: only allow reorder within the same list (matches "화면 내 순서 변경")
-        if(src.kind !== tgt.kind || (src.kind==='sec' && src.sec !== tgt.sec)) return prev;
+        if(src.kind !== tgt.kind) return prev;
+        if(src.kind === 'sec' && src.sec !== tgt.sec) return prev;
+        if(src.kind === 'tab' && (src.sec !== tgt.sec || src.tab !== tgt.tab)) return prev;
 
         const move = (arr) => {
           const from = arr.indexOf(sourceId);
@@ -239,8 +345,11 @@ function App(){
         };
         if(src.kind === 'hero'){
           return { ...prev, heroComponents: move(prev.heroComponents||[]) };
-        } else {
+        } else if(src.kind === 'sec'){
           const sidebar = prev.sidebar.map(s => s.id === src.sec ? { ...s, components: move(s.components) } : s);
+          return { ...prev, sidebar };
+        } else {
+          const sidebar = prev.sidebar.map(s => s.id === src.sec ? { ...s, tabs: s.tabs.map(t => t.id === src.tab ? { ...t, components: move(t.components) } : t) } : s);
           return { ...prev, sidebar };
         }
       });
@@ -299,6 +408,7 @@ function App(){
         onLoadJson={loadJson}
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
+        onGoHome={goHome}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
@@ -312,13 +422,13 @@ function App(){
           <window.ComponentLibrary
             state={state}
             activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
             targetSection={activeSectionId}
             onAddComponent={handleAddComponent}
-            onSelectSection={(id)=>{
-              setActiveSectionId(id);
-              setSelectedId(null);
-              if(id) commit(prev=>({...prev, activeSectionId: id}), {silent:true});
-            }}
+            onSelectSection={selectSection}
+            onSelectTab={selectTab}
+            onAddTab={addTab}
+            onDeleteTab={deleteTab}
             onProjectUpdate={handleProjectUpdate}
           />
         </div>
@@ -329,7 +439,9 @@ function App(){
             state={state}
             selectedId={selectedId}
             activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
             onSelect={setSelectedId}
+            onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
             onReorder={handleReorder}
             onContextMenu={handleContextMenu}
