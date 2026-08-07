@@ -709,6 +709,21 @@ function SectionHeading({ data, editing, onChange }){
 }
 
 // ============================================================
+// 13. TEXT BLOCK (자유 텍스트)
+// ============================================================
+function TextBlock({ data, editing, onChange }){
+  const d = data;
+  const align = d.align || 'left';
+  return (
+    <div style={{padding:'2px 0'}}>
+      <ET tag="p" value={d.body} onChange={(v)=>onChange({...d, body:v})} editing={editing} multiline
+        placeholder="내용을 입력하세요"
+        style={{margin:0,fontSize: d.size||13,lineHeight:1.75,color:'var(--ink)',textAlign:align,whiteSpace:'pre-wrap'}}/>
+    </div>
+  );
+}
+
+// ============================================================
 // Registry
 // ============================================================
 window.RENDERERS = {
@@ -724,6 +739,7 @@ window.RENDERERS = {
   'highlight-box': HighlightBox,
   'role-cards': RoleCards,
   'section-heading': SectionHeading,
+  'text-block': TextBlock,
 };
 
 window.COMPONENT_META = [
@@ -731,6 +747,7 @@ window.COMPONENT_META = [
   { type:'section-heading', label:'섹션 헤딩', icon:'Heading', group:'헤더', desc:'제목과 부연 설명' },
   { type:'kpi-grid', label:'KPI 카드', icon:'Grid', group:'데이터', desc:'수치 지표 카드 그리드' },
   { type:'table', label:'표 / 테이블', icon:'Table', group:'데이터', desc:'행과 열의 데이터' },
+  { type:'text-block', label:'일반 텍스트', icon:'Type', group:'컨텐츠', desc:'자유롭게 입력하는 본문 텍스트' },
   { type:'card-grid', label:'카드 그리드', icon:'Layers', group:'컨텐츠', desc:'2~4열 일반 카드' },
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
@@ -796,6 +813,7 @@ window.DEFAULT_DATA = {
     {icon:'📊',title:'의사결정자',desc:'회사 전반의 핵심 지표를 한 화면에서 조망하여 신속한 의사결정을 지원합니다.',bullets:['핵심 KPI 종합 조망','부서·제품별 비교 분석','즉시 보고 자료 생성']},
   ]}),
   'section-heading': () => ({ title:'섹션 제목', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
+  'text-block': () => ({ body:'여기에 내용을 입력하세요.', align:'left', size:13 }),
 };
 // Exporter: builds a self-contained HTML file (the final popup) + a JSON edit-state file.
 // Uses ReactDOM to render into a hidden DOM, then serializes outerHTML.
@@ -1587,6 +1605,19 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'text-block'){
+    return (
+      <div>
+        <Field label="본문"><TextInput value={d.body} onChange={(v)=>set('body',v)} multiline rows={6}/></Field>
+        <Field label="정렬">
+          <Segmented value={d.align||'left'} onChange={(v)=>set('align',v)}
+            options={[{value:'left',label:'왼쪽'},{value:'center',label:'가운데'},{value:'right',label:'오른쪽'}]}/>
+        </Field>
+        <Field label="글자 크기"><NumberInput value={d.size||13} onChange={(v)=>set('size',v)} min={10} max={28}/></Field>
+      </div>
+    );
+  }
+
   if(t === 'role-cards'){
     return (
       <div>
@@ -1807,6 +1838,18 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
 }
 
 function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, onSelectTab, onAddTab, onDeleteTab, onProjectUpdate }){
+  const renameSection = (id, label) => {
+    onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, label } : s) });
+  };
+  const renameGroup = (id, group) => {
+    onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, group } : s) });
+  };
+  const renameTab = (sectionId, tabId, label) => {
+    onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).map(t => t.id === tabId ? { ...t, label } : t) } : s) });
+  };
+
+  const iconBtn = {border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:13,borderRadius:5,flex:'none',display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22};
+
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
@@ -1823,13 +1866,30 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
     const tabs = sec.tabs || [];
     rows.push(
       <div key={sec.id} style={{marginBottom:4}}>
-        <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <button onClick={()=>onSelectSection(sec.id)}
-            style={{display:'flex',alignItems:'center',gap:8,flex:1,textAlign:'left',padding:'8px 10px',border:'none',background: (active && !activeTabId) ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-            <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{sec.label}</span>
-            {!tabs.length && <span style={{fontSize:11,color:'var(--mute)'}}>{sec.components.length}</span>}
-          </button>
-          <button title="삭제" onClick={()=>{
+        <div style={{display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+          <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>onSelectSection(sec.id)}>
+            {/* 상위 항목(그룹) - 사이드바 그룹 타이틀에 대응, 편집 가능 */}
+            <input
+              value={sec.group||'메뉴'}
+              onClick={(e)=>e.stopPropagation()}
+              onChange={(e)=>renameGroup(sec.id, e.target.value)}
+              placeholder="상위 항목"
+              style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 0'}}
+            />
+            {/* 섹션 명칭 - 편집 가능 */}
+            <input
+              value={sec.label}
+              onClick={(e)=>e.stopPropagation()}
+              onChange={(e)=>renameSection(sec.id, e.target.value)}
+              placeholder="섹션 이름"
+              style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'1px 6px 4px'}}
+            />
+          </div>
+          {!tabs.length && <span style={{fontSize:11,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{sec.components.length}</span>}
+          <button title="하위 탭 추가" onClick={()=>onAddTab(sec.id)} style={iconBtn}
+            onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+            onMouseLeave={(e)=>e.currentTarget.style.background='none'}>+</button>
+          <button title="섹션 삭제" onClick={()=>{
             if(!confirm('이 섹션을 삭제하시겠습니까? 포함된 컴포넌트도 제거됩니다.')) return;
             const sidebar = state.sidebar.filter(s => s.id !== sec.id);
             const components = {...state.components};
@@ -1839,31 +1899,35 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             if(active) patch.activeSectionId = sidebar[0]?.id || null;
             onProjectUpdate(patch);
           }}
-            style={{border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:12}}>✕</button>
+            style={iconBtn}
+            onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+            onMouseLeave={(e)=>e.currentTarget.style.background='none'}>✕</button>
         </div>
 
         {/* 하위 탭 */}
-        <div style={{marginLeft:18,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
-          {tabs.map(t => {
-            const tActive = active && activeTabId === t.id;
-            return (
-              <div key={t.id} style={{display:'flex',alignItems:'center',gap:4}}>
-                <button onClick={()=>onSelectTab(sec.id, t.id)}
-                  style={{display:'flex',alignItems:'center',gap:6,flex:1,textAlign:'left',padding:'6px 9px',border:'none',background: tActive ? '#fff' : 'transparent',borderRadius:7,fontSize:12,fontWeight: tActive?700:500,color: tActive ? 'var(--blue-dark)':'var(--sub)',cursor:'pointer',boxShadow: tActive ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-                  <span style={{opacity:.6}}>↳</span>
-                  <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.label}</span>
-                  <span style={{fontSize:10.5,color:'var(--mute)'}}>{t.components.length}</span>
-                </button>
-                <button title="하위 탭 삭제" onClick={()=>onDeleteTab(sec.id, t.id)}
-                  style={{border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:3,fontSize:11}}>✕</button>
-              </div>
-            );
-          })}
-          <button onClick={()=>onAddTab(sec.id)}
-            style={{width:'100%',textAlign:'left',padding:'5px 9px',marginTop:2,marginBottom:6,border:'none',background:'transparent',color:'var(--blue-dark)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
-            + 하위 탭 추가
-          </button>
-        </div>
+        {!!tabs.length && (
+          <div style={{marginLeft:18,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
+            {tabs.map(t => {
+              const tActive = active && activeTabId === t.id;
+              return (
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:2,padding:'2px',borderRadius:8,background: tActive ? '#fff' : 'transparent',boxShadow: tActive ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+                  <span style={{opacity:.5,fontSize:11,padding:'0 2px 0 6px',flex:'none'}}>↳</span>
+                  <input
+                    value={t.label}
+                    onClick={()=>onSelectTab(sec.id, t.id)}
+                    onChange={(e)=>renameTab(sec.id, t.id, e.target.value)}
+                    placeholder="하위 탭 이름"
+                    style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:12,fontWeight: tActive?700:500,color: tActive ? 'var(--blue-dark)':'var(--sub)',padding:'6px 4px'}}
+                  />
+                  <span style={{fontSize:10.5,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{t.components.length}</span>
+                  <button title="하위 탭 삭제" onClick={()=>onDeleteTab(sec.id, t.id)} style={{...iconBtn,width:19,height:19,fontSize:11}}
+                    onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+                    onMouseLeave={(e)=>e.currentTarget.style.background='none'}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   });
