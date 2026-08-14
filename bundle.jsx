@@ -267,6 +267,16 @@ window.TEMPLATES = [
 
 const { useState: rUseState, useRef: rUseRef, useEffect: rUseEffect } = React;
 
+// ------- hex color -> rgba(...) string, used for the neon glow's translucent shadow -------
+function hexToRgba(hex, alpha){
+  const h = String(hex||'#1C90FB').replace('#','');
+  const full = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(full.substring(0,2),16) || 0;
+  const g = parseInt(full.substring(2,4),16) || 0;
+  const b = parseInt(full.substring(4,6),16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 // ------- Editable Text primitive -------
 function ET({ tag = 'span', value, onChange, editing, className, style, multiline, placeholder }){
   const ref = rUseRef(null);
@@ -277,8 +287,14 @@ function ET({ tag = 'span', value, onChange, editing, className, style, multilin
     if(v !== value) onChange && onChange(v);
   };
   const handleKey = (e) => {
-    if(!multiline && e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); }
-    if(e.key === 'Escape'){ e.currentTarget.blur(); }
+    if(e.key === 'Enter'){
+      // Enter와 Shift+Enter 모두 줄바꿈을 삽입한다 (모든 컴포넌트 공통).
+      // 편집을 끝내려면 다른 곳을 클릭하거나 Esc를 누르면 된다.
+      e.preventDefault();
+      document.execCommand('insertLineBreak');
+    } else if(e.key === 'Escape'){
+      e.currentTarget.blur();
+    }
   };
   // Prevent React from resetting DOM on every keystroke: use suppressContentEditableWarning
   return (
@@ -676,6 +692,25 @@ function ImageBlock({ data, editing, onChange }){
   const width = live?.width ?? d.width ?? null; // null = 100% (fill container)
   const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
 
+  // 강조(emphasis) 시 굵기·네온 적용범위는 고정값 — 색상만 바꿀 수 있다.
+  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~3px로 제한한다.
+  const EMPHASIS_BORDER_WIDTH = 4;
+  const EMPHASIS_GLOW_SPREAD = 16;
+  const emphasisOn = !!d.emphasis?.enabled;
+  const borderOn = !!d.border?.enabled;
+  const baseBorderWidth = Math.max(1, Math.min(3, d.border?.width || 1));
+  const baseBorderColor = d.border?.color || '#1C90FB';
+  const emphasisColor = d.emphasis?.color || '#1C90FB';
+  let frameExtra = {};
+  if(emphasisOn){
+    frameExtra = {
+      border: `${EMPHASIS_BORDER_WIDTH}px solid ${emphasisColor}`,
+      boxShadow: `0 0 0 2px ${hexToRgba(emphasisColor,.18)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.55)}`,
+    };
+  } else if(borderOn){
+    frameExtra = { border: `${baseBorderWidth}px solid ${baseBorderColor}` };
+  }
+
   const onFile = (e) => {
     const f = e.target.files && e.target.files[0];
     if(!f) return;
@@ -718,7 +753,7 @@ function ImageBlock({ data, editing, onChange }){
     <div>
       {d.src ? (
         <div ref={wrapperRef} style={{position:'relative', width: width ? width : '100%', maxWidth:'100%'}}>
-          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto'}}>
+          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto', ...frameExtra}}>
             <img src={d.src} alt={d.alt||''} style={{
               width:'100%',
               height: d.freeAspect ? '100%' : 'auto',
@@ -829,7 +864,7 @@ function RoleCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${d.items?.length||2},1fr)`,gap:14}}>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
+        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: it.bgColor || backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
           <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background: iconBgs[i%iconBgs.length]}}>
             <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
           </div>
@@ -959,7 +994,9 @@ window.DEFAULT_DATA = {
       ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
     ],
   }),
-  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0} }),
+  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
+    border:{ enabled:false, color:'#1C90FB', width:1 },
+    emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
     {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},
@@ -1106,7 +1143,8 @@ async function buildFinalHtml(state){
 
   const footer = state.popup?.footer || {};
   const dontShow = state.popup?.dontShowOption !== false;
-  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -1121,6 +1159,7 @@ async function buildFinalHtml(state){
 <title>${escapeHtml(state.meta?.title || '안내 팝업')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${POPUP_CSS}</style>
+<style>.window{height:min(${windowHeight}px, 88vh);}</style>
 </head>
 <body>
 <div class="host-page">
@@ -1437,13 +1476,13 @@ const inputStyle = {
 };
 
 function TextInput({ value, onChange, multiline, placeholder, rows=3 }){
-  if(multiline){
-    return <textarea style={{...inputStyle, resize:'vertical', minHeight: rows*20}}
-      value={value||''} placeholder={placeholder}
-      onChange={(e)=>onChange(e.target.value)} />;
-  }
-  return <input type="text" style={inputStyle} value={value||''} placeholder={placeholder}
-    onChange={(e)=>onChange(e.target.value)}/>;
+  // 항상 textarea를 사용해서, multiline으로 지정하지 않은 짧은 필드에서도
+  // Enter/Shift+Enter로 줄바꿈을 넣을 수 있게 한다. <input>은 구조적으로
+  // 줄바꿈 문자를 담을 수 없어서 textarea로 통일함.
+  return <textarea style={{...inputStyle, resize:'vertical', minHeight: (multiline ? rows : 1.6) * 20}}
+    rows={multiline ? rows : 1}
+    value={value||''} placeholder={placeholder}
+    onChange={(e)=>onChange(e.target.value)} />;
 }
 
 function NumberInput({ value, onChange, min, max, step=1 }){
@@ -1498,6 +1537,7 @@ window.DESIGN_PALETTE = [
 
 function ColorPicker({ value, onChange }){
   const [open, setOpen] = pUseState(false);
+  const [customHex, setCustomHex] = pUseState(value || '#000000');
   const wrapRef = React.useRef(null);
 
   React.useEffect(()=>{
@@ -1507,7 +1547,22 @@ function ColorPicker({ value, onChange }){
     return ()=>document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  React.useEffect(()=>{ if(open) setCustomHex(value || '#000000'); }, [open]);
+
   const current = window.DESIGN_PALETTE.flatMap(g=>g.colors).find(c => String(c.hex).toLowerCase() === String(value||'').toLowerCase());
+
+  const applyHex = (hex) => {
+    if(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) onChange(hex);
+  };
+
+  const pickWithEyedropper = async () => {
+    if(!window.EyeDropper) return;
+    try {
+      const ed = new window.EyeDropper();
+      const result = await ed.open();
+      if(result && result.sRGBHex){ onChange(result.sRGBHex); setCustomHex(result.sRGBHex); setOpen(false); }
+    } catch(e) { /* 사용자가 취소함 */ }
+  };
 
   return (
     <div ref={wrapRef} style={{position:'relative'}}>
@@ -1521,7 +1576,7 @@ function ColorPicker({ value, onChange }){
       </button>
 
       {open && (
-        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:340,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 4px'}}>
+        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:400,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
           {window.DESIGN_PALETTE.map(g => (
             <div key={g.group} style={{marginBottom:10}}>
               <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
@@ -1534,6 +1589,25 @@ function ColorPicker({ value, onChange }){
               </div>
             </div>
           ))}
+          <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
+            <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
+                onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
+                title="색상 선택기"
+                style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
+              <input type="text" value={customHex}
+                onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
+                placeholder="#RRGGBB"
+                style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
+              {!!window.EyeDropper && (
+                <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
+                  style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  💧
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1942,6 +2016,33 @@ function CompEditor({ comp, onChange }){
             <ImageCropEditor image={d}
               onApply={(newSrc, cropInset)=>onChange({...d, src:newSrc, cropInset})}
               onReset={()=>onChange({...d, src:d.originalSrc||d.src, cropInset:{top:0,right:0,bottom:0,left:0}})}/>
+
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>테두리 · 강조</div>
+            <Field label=" ">
+              <Toggle value={!!d.border?.enabled} onChange={(v)=>onChange({...d, border:{...(d.border||{}), enabled:v}})} label="테두리 추가"/>
+            </Field>
+            {d.border?.enabled && !d.emphasis?.enabled && (
+              <>
+                <Field label="테두리 색상">
+                  <ColorPicker value={d.border?.color} onChange={(hex)=>onChange({...d, border:{...(d.border||{}), color:hex}})}/>
+                </Field>
+                <Field label={`테두리 굵기 (${d.border?.width||1}px)`}>
+                  <input type="range" min={1} max={3} step={1}
+                    value={d.border?.width||1}
+                    onChange={(e)=>onChange({...d, border:{...(d.border||{}), width:Number(e.target.value)}})}
+                    style={{width:'100%'}}/>
+                </Field>
+              </>
+            )}
+
+            <Field label=" ">
+              <Toggle value={!!d.emphasis?.enabled} onChange={(v)=>onChange({...d, emphasis:{...(d.emphasis||{}), enabled:v}})} label="강조 (굵은 테두리 + 네온)"/>
+            </Field>
+            {d.emphasis?.enabled && (
+              <Field label="강조 색상" hint="테두리 굵기와 네온 적용범위는 고정이며, 색상만 바꿀 수 있어요. 강조를 켜면 기본 테두리보다 굵게 표시됩니다.">
+                <ColorPicker value={d.emphasis?.color} onChange={(hex)=>onChange({...d, emphasis:{...(d.emphasis||{}), color:hex}})}/>
+              </Field>
+            )}
           </>
         )}
 
@@ -2022,6 +2123,14 @@ function CompEditor({ comp, onChange }){
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
                 <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목 (한 줄에 하나씩)</div>
                 <TextInput value={(it.bullets||[]).join('\n')} onChange={(v)=>upd({bullets: v.split('\n').filter(x=>x.trim())})} multiline rows={4}/>
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>배경 색상</div>
+                <ColorPicker value={it.bgColor} onChange={(hex)=>upd({bgColor:hex})}/>
+                {it.bgColor && (
+                  <button type="button" onClick={()=>upd({bgColor:''})}
+                    style={{fontSize:10.5,color:'var(--mute)',background:'none',border:'none',cursor:'pointer',textAlign:'left',padding:0}}>
+                    기본 배경으로 되돌리기
+                  </button>
+                )}
               </div>
             )}/>
         </Field>
@@ -2138,6 +2247,19 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           <div style={{padding:'0 16px 18px',maxHeight:360,overflowY:'auto'}}>
             <Field label="프로젝트 제목">
               <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>레이아웃</div>
+            <Field label="상세 화면 상단 여백" hint="첫 컴포넌트 앞 여백입니다. 캔버스에서 직접 드래그해도 조절할 수 있어요.">
+              <div style={{display:'flex',alignItems:'center',gap:2}}>
+                <input type="number" min={0} max={120} step={1}
+                  value={state.popup?.topGap ?? 30}
+                  onChange={(e)=>{
+                    const v = Math.max(0, Math.min(120, Number(e.target.value) || 0));
+                    onProjectUpdate({ popup:{...state.popup, topGap:v} });
+                  }}
+                  style={{width:56,padding:'6px 7px',border:'1px solid var(--line)',borderRadius:6,fontSize:12.5,fontWeight:700,color:'var(--sub)',textAlign:'right',fontFamily:'inherit'}}/>
+                <span style={{fontSize:12,color:'var(--sub)',fontWeight:700}}>px</span>
+              </div>
             </Field>
             <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>푸터</div>
             <Field label="이용 링크 (콤마 구분)">
@@ -2643,7 +2765,8 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
 
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
-  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -2740,13 +2863,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
-          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', minHeight:600}}
+          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', display:'flex', flexDirection:'column', height: windowHeight}}
             onClick={()=>onSelect(null)}
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
             <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
-            <div style={{padding:'12px 14px'}}>
+            <div style={{flex:1, minHeight:0, overflowY:'auto', padding:'12px 14px'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
                   <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
@@ -2771,7 +2894,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
           {activeSec?.kind === 'cover' ? '🖼️ 표지 화면' : '📄 상세 화면'} · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>
-        <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', minHeight:600}}
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', height: windowHeight}}
           onClick={()=>onSelect(null)}>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
@@ -2885,9 +3008,11 @@ window.PopupFooter = PopupFooter;
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
+  const [showHeightPopover, setShowHeightPopover] = tUseState(false);
+  const windowHeight = state.popup?.windowHeight ?? 780;
 
   React.useEffect(()=>{
     if(savedIndicator){
@@ -2953,6 +3078,44 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
           <span style={{opacity: canRedo?1:.4, fontSize:14}}>↷</span>
         </button>
 
+        <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
+
+        <div style={{position:'relative'}}>
+          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 높이 조절">
+            ↕ 팝업 높이
+          </button>
+          {showHeightPopover && (
+            <>
+              <div style={{position:'fixed',inset:0,zIndex:10}} onClick={()=>setShowHeightPopover(false)}/>
+              <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
+                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
+                <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
+                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요.
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="range" min={480} max={900} step={10}
+                    value={windowHeight}
+                    onChange={(e)=>onUpdateWindowHeight(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={480} max={900} step={10}
+                      value={windowHeight}
+                      onChange={(e)=>{
+                        const v = Math.max(480, Math.min(900, Number(e.target.value) || 780));
+                        onUpdateWindowHeight(v);
+                      }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+                <button onClick={()=>onUpdateWindowHeight(780)}
+                  style={{marginTop:8,width:'100%',padding:'6px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
+                  기본값(780px)으로
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 
         <button style={btnBase} onClick={onNewProject} title="새 프로젝트">
@@ -3500,6 +3663,11 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, topGap: g } }));
   };
 
+  // 팝업 창 높이 — 표지·상세 화면이 공유하는 하나의 값
+  const handleUpdateWindowHeight = (h) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -3761,6 +3929,7 @@ function App(){
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
         onGoHome={goHome}
+        onUpdateWindowHeight={handleUpdateWindowHeight}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}

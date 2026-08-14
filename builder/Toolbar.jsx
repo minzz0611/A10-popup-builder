@@ -1,9 +1,11 @@
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
+  const [showHeightPopover, setShowHeightPopover] = tUseState(false);
+  const windowHeight = state.popup?.windowHeight ?? 780;
 
   React.useEffect(()=>{
     if(savedIndicator){
@@ -69,6 +71,44 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
           <span style={{opacity: canRedo?1:.4, fontSize:14}}>↷</span>
         </button>
 
+        <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
+
+        <div style={{position:'relative'}}>
+          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 높이 조절">
+            ↕ 팝업 높이
+          </button>
+          {showHeightPopover && (
+            <>
+              <div style={{position:'fixed',inset:0,zIndex:10}} onClick={()=>setShowHeightPopover(false)}/>
+              <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
+                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
+                <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
+                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요.
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="range" min={480} max={900} step={10}
+                    value={windowHeight}
+                    onChange={(e)=>onUpdateWindowHeight(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={480} max={900} step={10}
+                      value={windowHeight}
+                      onChange={(e)=>{
+                        const v = Math.max(480, Math.min(900, Number(e.target.value) || 780));
+                        onUpdateWindowHeight(v);
+                      }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+                <button onClick={()=>onUpdateWindowHeight(780)}
+                  style={{marginTop:8,width:'100%',padding:'6px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
+                  기본값(780px)으로
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 
         <button style={btnBase} onClick={onNewProject} title="새 프로젝트">

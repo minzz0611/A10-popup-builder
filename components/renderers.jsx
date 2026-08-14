@@ -7,6 +7,16 @@
 
 const { useState: rUseState, useRef: rUseRef, useEffect: rUseEffect } = React;
 
+// ------- hex color -> rgba(...) string, used for the neon glow's translucent shadow -------
+function hexToRgba(hex, alpha){
+  const h = String(hex||'#1C90FB').replace('#','');
+  const full = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(full.substring(0,2),16) || 0;
+  const g = parseInt(full.substring(2,4),16) || 0;
+  const b = parseInt(full.substring(4,6),16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 // ------- Editable Text primitive -------
 function ET({ tag = 'span', value, onChange, editing, className, style, multiline, placeholder }){
   const ref = rUseRef(null);
@@ -17,8 +27,14 @@ function ET({ tag = 'span', value, onChange, editing, className, style, multilin
     if(v !== value) onChange && onChange(v);
   };
   const handleKey = (e) => {
-    if(!multiline && e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); }
-    if(e.key === 'Escape'){ e.currentTarget.blur(); }
+    if(e.key === 'Enter'){
+      // Enter와 Shift+Enter 모두 줄바꿈을 삽입한다 (모든 컴포넌트 공통).
+      // 편집을 끝내려면 다른 곳을 클릭하거나 Esc를 누르면 된다.
+      e.preventDefault();
+      document.execCommand('insertLineBreak');
+    } else if(e.key === 'Escape'){
+      e.currentTarget.blur();
+    }
   };
   // Prevent React from resetting DOM on every keystroke: use suppressContentEditableWarning
   return (
@@ -416,6 +432,25 @@ function ImageBlock({ data, editing, onChange }){
   const width = live?.width ?? d.width ?? null; // null = 100% (fill container)
   const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
 
+  // 강조(emphasis) 시 굵기·네온 적용범위는 고정값 — 색상만 바꿀 수 있다.
+  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~3px로 제한한다.
+  const EMPHASIS_BORDER_WIDTH = 4;
+  const EMPHASIS_GLOW_SPREAD = 16;
+  const emphasisOn = !!d.emphasis?.enabled;
+  const borderOn = !!d.border?.enabled;
+  const baseBorderWidth = Math.max(1, Math.min(3, d.border?.width || 1));
+  const baseBorderColor = d.border?.color || '#1C90FB';
+  const emphasisColor = d.emphasis?.color || '#1C90FB';
+  let frameExtra = {};
+  if(emphasisOn){
+    frameExtra = {
+      border: `${EMPHASIS_BORDER_WIDTH}px solid ${emphasisColor}`,
+      boxShadow: `0 0 0 2px ${hexToRgba(emphasisColor,.18)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.55)}`,
+    };
+  } else if(borderOn){
+    frameExtra = { border: `${baseBorderWidth}px solid ${baseBorderColor}` };
+  }
+
   const onFile = (e) => {
     const f = e.target.files && e.target.files[0];
     if(!f) return;
@@ -458,7 +493,7 @@ function ImageBlock({ data, editing, onChange }){
     <div>
       {d.src ? (
         <div ref={wrapperRef} style={{position:'relative', width: width ? width : '100%', maxWidth:'100%'}}>
-          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto'}}>
+          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto', ...frameExtra}}>
             <img src={d.src} alt={d.alt||''} style={{
               width:'100%',
               height: d.freeAspect ? '100%' : 'auto',
@@ -569,7 +604,7 @@ function RoleCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${d.items?.length||2},1fr)`,gap:14}}>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
+        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: it.bgColor || backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
           <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background: iconBgs[i%iconBgs.length]}}>
             <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
           </div>
@@ -699,7 +734,9 @@ window.DEFAULT_DATA = {
       ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
     ],
   }),
-  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0} }),
+  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
+    border:{ enabled:false, color:'#1C90FB', width:1 },
+    emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
     {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},

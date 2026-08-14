@@ -131,7 +131,8 @@ async function buildFinalHtml(state){
 
   const footer = state.popup?.footer || {};
   const dontShow = state.popup?.dontShowOption !== false;
-  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -146,6 +147,7 @@ async function buildFinalHtml(state){
 <title>${escapeHtml(state.meta?.title || '안내 팝업')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${POPUP_CSS}</style>
+<style>.window{height:min(${windowHeight}px, 88vh);}</style>
 </head>
 <body>
 <div class="host-page">

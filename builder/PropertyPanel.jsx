@@ -24,13 +24,13 @@ const inputStyle = {
 };
 
 function TextInput({ value, onChange, multiline, placeholder, rows=3 }){
-  if(multiline){
-    return <textarea style={{...inputStyle, resize:'vertical', minHeight: rows*20}}
-      value={value||''} placeholder={placeholder}
-      onChange={(e)=>onChange(e.target.value)} />;
-  }
-  return <input type="text" style={inputStyle} value={value||''} placeholder={placeholder}
-    onChange={(e)=>onChange(e.target.value)}/>;
+  // 항상 textarea를 사용해서, multiline으로 지정하지 않은 짧은 필드에서도
+  // Enter/Shift+Enter로 줄바꿈을 넣을 수 있게 한다. <input>은 구조적으로
+  // 줄바꿈 문자를 담을 수 없어서 textarea로 통일함.
+  return <textarea style={{...inputStyle, resize:'vertical', minHeight: (multiline ? rows : 1.6) * 20}}
+    rows={multiline ? rows : 1}
+    value={value||''} placeholder={placeholder}
+    onChange={(e)=>onChange(e.target.value)} />;
 }
 
 function NumberInput({ value, onChange, min, max, step=1 }){
@@ -85,6 +85,7 @@ window.DESIGN_PALETTE = [
 
 function ColorPicker({ value, onChange }){
   const [open, setOpen] = pUseState(false);
+  const [customHex, setCustomHex] = pUseState(value || '#000000');
   const wrapRef = React.useRef(null);
 
   React.useEffect(()=>{
@@ -94,7 +95,22 @@ function ColorPicker({ value, onChange }){
     return ()=>document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  React.useEffect(()=>{ if(open) setCustomHex(value || '#000000'); }, [open]);
+
   const current = window.DESIGN_PALETTE.flatMap(g=>g.colors).find(c => String(c.hex).toLowerCase() === String(value||'').toLowerCase());
+
+  const applyHex = (hex) => {
+    if(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) onChange(hex);
+  };
+
+  const pickWithEyedropper = async () => {
+    if(!window.EyeDropper) return;
+    try {
+      const ed = new window.EyeDropper();
+      const result = await ed.open();
+      if(result && result.sRGBHex){ onChange(result.sRGBHex); setCustomHex(result.sRGBHex); setOpen(false); }
+    } catch(e) { /* 사용자가 취소함 */ }
+  };
 
   return (
     <div ref={wrapRef} style={{position:'relative'}}>
@@ -108,7 +124,7 @@ function ColorPicker({ value, onChange }){
       </button>
 
       {open && (
-        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:340,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 4px'}}>
+        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:400,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
           {window.DESIGN_PALETTE.map(g => (
             <div key={g.group} style={{marginBottom:10}}>
               <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
@@ -121,6 +137,25 @@ function ColorPicker({ value, onChange }){
               </div>
             </div>
           ))}
+          <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
+            <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
+                onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
+                title="색상 선택기"
+                style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
+              <input type="text" value={customHex}
+                onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
+                placeholder="#RRGGBB"
+                style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
+              {!!window.EyeDropper && (
+                <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
+                  style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  💧
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -529,6 +564,33 @@ function CompEditor({ comp, onChange }){
             <ImageCropEditor image={d}
               onApply={(newSrc, cropInset)=>onChange({...d, src:newSrc, cropInset})}
               onReset={()=>onChange({...d, src:d.originalSrc||d.src, cropInset:{top:0,right:0,bottom:0,left:0}})}/>
+
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>테두리 · 강조</div>
+            <Field label=" ">
+              <Toggle value={!!d.border?.enabled} onChange={(v)=>onChange({...d, border:{...(d.border||{}), enabled:v}})} label="테두리 추가"/>
+            </Field>
+            {d.border?.enabled && !d.emphasis?.enabled && (
+              <>
+                <Field label="테두리 색상">
+                  <ColorPicker value={d.border?.color} onChange={(hex)=>onChange({...d, border:{...(d.border||{}), color:hex}})}/>
+                </Field>
+                <Field label={`테두리 굵기 (${d.border?.width||1}px)`}>
+                  <input type="range" min={1} max={3} step={1}
+                    value={d.border?.width||1}
+                    onChange={(e)=>onChange({...d, border:{...(d.border||{}), width:Number(e.target.value)}})}
+                    style={{width:'100%'}}/>
+                </Field>
+              </>
+            )}
+
+            <Field label=" ">
+              <Toggle value={!!d.emphasis?.enabled} onChange={(v)=>onChange({...d, emphasis:{...(d.emphasis||{}), enabled:v}})} label="강조 (굵은 테두리 + 네온)"/>
+            </Field>
+            {d.emphasis?.enabled && (
+              <Field label="강조 색상" hint="테두리 굵기와 네온 적용범위는 고정이며, 색상만 바꿀 수 있어요. 강조를 켜면 기본 테두리보다 굵게 표시됩니다.">
+                <ColorPicker value={d.emphasis?.color} onChange={(hex)=>onChange({...d, emphasis:{...(d.emphasis||{}), color:hex}})}/>
+              </Field>
+            )}
           </>
         )}
 
@@ -609,6 +671,14 @@ function CompEditor({ comp, onChange }){
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
                 <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목 (한 줄에 하나씩)</div>
                 <TextInput value={(it.bullets||[]).join('\n')} onChange={(v)=>upd({bullets: v.split('\n').filter(x=>x.trim())})} multiline rows={4}/>
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>배경 색상</div>
+                <ColorPicker value={it.bgColor} onChange={(hex)=>upd({bgColor:hex})}/>
+                {it.bgColor && (
+                  <button type="button" onClick={()=>upd({bgColor:''})}
+                    style={{fontSize:10.5,color:'var(--mute)',background:'none',border:'none',cursor:'pointer',textAlign:'left',padding:0}}>
+                    기본 배경으로 되돌리기
+                  </button>
+                )}
               </div>
             )}/>
         </Field>
@@ -725,6 +795,19 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           <div style={{padding:'0 16px 18px',maxHeight:360,overflowY:'auto'}}>
             <Field label="프로젝트 제목">
               <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>레이아웃</div>
+            <Field label="상세 화면 상단 여백" hint="첫 컴포넌트 앞 여백입니다. 캔버스에서 직접 드래그해도 조절할 수 있어요.">
+              <div style={{display:'flex',alignItems:'center',gap:2}}>
+                <input type="number" min={0} max={120} step={1}
+                  value={state.popup?.topGap ?? 30}
+                  onChange={(e)=>{
+                    const v = Math.max(0, Math.min(120, Number(e.target.value) || 0));
+                    onProjectUpdate({ popup:{...state.popup, topGap:v} });
+                  }}
+                  style={{width:56,padding:'6px 7px',border:'1px solid var(--line)',borderRadius:6,fontSize:12.5,fontWeight:700,color:'var(--sub)',textAlign:'right',fontFamily:'inherit'}}/>
+                <span style={{fontSize:12,color:'var(--sub)',fontWeight:700}}>px</span>
+              </div>
             </Field>
             <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>푸터</div>
             <Field label="이용 링크 (콤마 구분)">

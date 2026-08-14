@@ -112,7 +112,8 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
 
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
-  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -209,13 +210,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
-          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', minHeight:600}}
+          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', display:'flex', flexDirection:'column', height: windowHeight}}
             onClick={()=>onSelect(null)}
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
             <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
-            <div style={{padding:'12px 14px'}}>
+            <div style={{flex:1, minHeight:0, overflowY:'auto', padding:'12px 14px'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
                   <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
@@ -240,7 +241,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
           {activeSec?.kind === 'cover' ? '🖼️ 표지 화면' : '📄 상세 화면'} · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>
-        <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', minHeight:600}}
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', height: windowHeight}}
           onClick={()=>onSelect(null)}>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}

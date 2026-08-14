@@ -256,6 +256,11 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, topGap: g } }));
   };
 
+  // 팝업 창 높이 — 표지·상세 화면이 공유하는 하나의 값
+  const handleUpdateWindowHeight = (h) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -517,6 +522,7 @@ function App(){
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
         onGoHome={goHome}
+        onUpdateWindowHeight={handleUpdateWindowHeight}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
