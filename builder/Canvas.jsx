@@ -243,17 +243,19 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           onClick={()=>onSelect(null)}>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
-            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)'}}>
-              <SidebarNav state={state} activeSectionId={activeSectionId} onSelect={(id)=>{
-                // clicking sidebar in canvas doesn't switch section; that's for real popup
-              }}/>
+            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
+              <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
+                onSelect={(id)=>{
+                  // clicking a top-level section in canvas doesn't switch section; that's for real popup
+                }}
+                onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
             </nav>
             {/* Content editable */}
             <div style={{flex:1, padding:'18px 44px 20px', overflowY:'auto'}}
               onDragOver={handleContainerDragOver}
               onDrop={handleContainerDrop}
             >
-              {!!(activeSec?.tabs?.length) && (activeSec.navMode || 'top') !== 'toc' && (
+              {!!(activeSec?.tabs?.length) && (activeSec.navMode==='top' || activeSec.navMode==='both' || !activeSec.navMode) && (
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
                   {activeSec.tabs.map(t => (
                     <button key={t.id} onClick={()=>onSelectTab(t.id)}
@@ -261,21 +263,6 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                       {t.label}
                     </button>
                   ))}
-                </div>
-              )}
-              {!!(activeSec?.tabs?.length) && (activeSec.navMode === 'toc' || activeSec.navMode === 'both') && (
-                <div style={{border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
-                  {activeSec.tabs.map((t, i) => {
-                    const tActive = t.id === activeTabId;
-                    return (
-                      <button key={t.id} onClick={()=>onSelectTab(t.id)}
-                        style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'12px 16px',border:'none',borderBottom: i<activeSec.tabs.length-1 ? '1px solid var(--line)':'none',background: tActive?'var(--grad-soft)':'#fff',cursor:'pointer'}}>
-                        <span style={{flex:'none',width:24,height:24,borderRadius:'50%',background: tActive?'var(--grad)':'var(--panel)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800}}>{i+1}</span>
-                        <span style={{flex:1,fontSize:13.5,fontWeight: tActive?700:600,color: tActive?'var(--blue-dark)':'var(--ink)'}}>{t.label}</span>
-                        <span style={{flex:'none',color:'var(--mute)',fontSize:13}}>›</span>
-                      </button>
-                    );
-                  })}
                 </div>
               )}
               {componentList.length === 0 && (
@@ -299,7 +286,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   );
 }
 
-function SidebarNav({ state, activeSectionId, onSelect }){
+function SidebarNav({ state, activeSectionId, activeTabId, onSelect, onSelectTab }){
   // Group sidebar items by group
   const grouped = {};
   (state.sidebar||[]).forEach(s => (grouped[s.group||'메뉴'] ||= []).push(s));
@@ -308,12 +295,31 @@ function SidebarNav({ state, activeSectionId, onSelect }){
     out.push(<div key={'g'+gi} style={{fontSize:12,color:'#9199A6',fontWeight:700,padding:'8px 10px 4px',letterSpacing:'.02em'}}>{g}</div>);
     grouped[g].forEach(s => {
       const active = s.id === activeSectionId;
+      const navMode = s.navMode || 'top';
+      const showSubmenu = active && !!(s.tabs && s.tabs.length) && (navMode === 'toc' || navMode === 'both');
       out.push(
         <button key={s.id} onClick={(e)=>{ e.stopPropagation(); onSelect(s.id); }}
           style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background: active ? '#fff' : 'none', border:'none',padding:'11px 12px',borderRadius:10,fontSize:14.5,color: active ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: active ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
           <span style={{flex:1}}>{s.label}</span>
         </button>
       );
+      // 하위 뎁스: 이 섹션의 탭들을 사이드바 안에 들여쓰기하여 표시 (목차 노출)
+      if(showSubmenu){
+        out.push(
+          <div key={s.id+'-sub'} style={{margin:'0 0 6px 12px',paddingLeft:10,borderLeft:'1.5px solid var(--line)'}}>
+            {s.tabs.map((t,ti) => {
+              const tActive = activeTabId === t.id;
+              return (
+                <button key={t.id} onClick={(e)=>{ e.stopPropagation(); onSelectTab && onSelectTab(s.id, t.id); }}
+                  style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',background: tActive ? '#fff' : 'none', border:'none',padding:'9px 10px',borderRadius:8,fontSize:13,color: tActive ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: tActive ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
+                  <span style={{flex:'none',width:18,height:18,borderRadius:'50%',background: tActive?'var(--grad)':'var(--line)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800}}>{ti+1}</span>
+                  <span style={{flex:1}}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
     });
   });
   return <div>{out}</div>;

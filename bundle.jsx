@@ -1009,6 +1009,11 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .side-nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:11px 12px;border-radius:10px;font-size:14.5px;color:var(--sub);cursor:pointer;font-weight:600;margin-bottom:2px;}
 .side-nav button:hover{background:#EAECF1;color:var(--ink);}
 .side-nav button.active{background:#fff;color:var(--blue-dark);box-shadow:0 2px 8px rgba(30,50,120,.08);}
+.nav-submenu{display:none;margin:0 0 6px 12px;padding-left:10px;border-left:1.5px solid var(--line);}
+.nav-submenu.active{display:block;}
+.nav-submenu button{padding:9px 10px;font-size:13px;gap:8px;}
+.nav-submenu button .num{flex:none;width:18px;height:18px;border-radius:50%;background:var(--line);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;}
+.nav-submenu button.active .num{background:var(--grad);color:#fff;}
 .content{flex:1;padding:18px 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
@@ -1020,14 +1025,6 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .sub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .sub-tabs button{border:1px solid var(--line);background:#fff;color:var(--sub);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:999px;cursor:pointer;}
 .sub-tabs button.active{background:var(--grad);border-color:transparent;color:#fff;}
-.sub-toc{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:18px;}
-.sub-toc-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 16px;border:none;border-bottom:1px solid var(--line);background:#fff;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer;}
-.sub-toc-btn:last-child{border-bottom:none;}
-.sub-toc-btn .num{flex:none;width:24px;height:24px;border-radius:50%;background:var(--panel);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;}
-.sub-toc-btn .lbl{flex:1;}
-.sub-toc-btn .arrow{flex:none;color:var(--mute);font-size:13px;}
-.sub-toc-btn.active{background:var(--grad-soft);}
-.sub-toc-btn.active .num{background:var(--grad);color:#fff;}
 .sub-panel{display:none;}
 .sub-panel.active{display:block;}
 .reopen{position:fixed;bottom:26px;right:26px;background:var(--grad);color:#fff;border:none;padding:13px 20px;border-radius:999px;font-weight:700;font-size:13.5px;box-shadow:0 12px 30px rgba(60,80,255,.3);cursor:pointer;display:none;}
@@ -1072,18 +1069,13 @@ async function buildFinalHtml(state){
             `<button class="sub-tab-btn${ti===0?' active':''}" data-sec="${sec.id}" data-subtab="${t.id}" onclick="goSubTab('${sec.id}','${t.id}')">${escapeHtml(t.label)}</button>`
           )).join('')}</div>`
         : '';
-      const toc = (navMode === 'toc' || navMode === 'both')
-        ? `<div class="sub-toc">${sec.tabs.map((t,ti) => (
-            `<button class="sub-toc-btn${ti===0?' active':''}" data-sec="${sec.id}" data-subtab="${t.id}" onclick="goSubTab('${sec.id}','${t.id}')"><span class="num">${ti+1}</span><span class="lbl">${escapeHtml(t.label)}</span><span class="arrow">›</span></button>`
-          )).join('')}</div>`
-        : '';
       let panels = '';
       for(let ti = 0; ti < sec.tabs.length; ti++){
         const t = sec.tabs[ti];
         const inner = await renderComponentsToHTML(state.components, t.components || []);
         panels += `<div class="sub-panel${ti===0?' active':''}" id="subpanel-${sec.id}-${t.id}">${inner}</div>`;
       }
-      sectionHtmls[sec.id] = tabBar + toc + panels;
+      sectionHtmls[sec.id] = tabBar + panels;
     } else {
       sectionHtmls[sec.id] = await renderComponentsToHTML(state.components, sec.components || []);
     }
@@ -1095,9 +1087,18 @@ async function buildFinalHtml(state){
   sidebar.forEach(s => (grouped[s.group||'메뉴'] ||= []).push(s));
 
   const sidebarHtml = Object.keys(grouped).map(g => {
-    const items = grouped[g].map((s,i) => (
-      `<button class="nav-btn${i===0 && g===Object.keys(grouped)[0] ? ' active' : ''}" data-panel="${s.id}" onclick="goPanel('${s.id}')">${escapeHtml(s.label)}</button>`
-    )).join('');
+    const items = grouped[g].map((s,i) => {
+      const isFirst = i===0 && g===Object.keys(grouped)[0];
+      const btn = `<button class="nav-btn${isFirst ? ' active' : ''}" data-panel="${s.id}" onclick="goPanel('${s.id}')">${escapeHtml(s.label)}</button>`;
+      const navMode = s.navMode || 'top';
+      const showSubmenu = s.tabs && s.tabs.length && (navMode === 'toc' || navMode === 'both');
+      const submenu = showSubmenu
+        ? `<div class="nav-submenu${isFirst ? ' active' : ''}" data-parent="${s.id}">${s.tabs.map((t,ti) => (
+            `<button class="${ti===0?'active':''}" data-sec="${s.id}" data-subtab="${t.id}" onclick="goPanelSubTab('${s.id}','${t.id}')"><span class="num">${ti+1}</span><span>${escapeHtml(t.label)}</span></button>`
+          )).join('')}</div>`
+        : '';
+      return btn + submenu;
+    }).join('');
     return `<div class="grp-title">${escapeHtml(g)}</div>${items}`;
   }).join('');
 
@@ -1173,14 +1174,26 @@ function goPanel(id){
   var t = document.getElementById('panel-'+id); if(t) t.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
   var b = document.querySelector('.nav-btn[data-panel="'+id+'"]'); if(b) b.classList.add('active');
+  document.querySelectorAll('.nav-submenu').forEach(function(sm){sm.classList.remove('active');});
+  var sm = document.querySelector('.nav-submenu[data-parent="'+id+'"]'); if(sm) sm.classList.add('active');
   var c = document.querySelector('#detailScreen .content'); if(c) c.scrollTop = 0;
 }
 function goSubTab(secId, tabId){
   var scope = document.getElementById('panel-'+secId); if(!scope) return;
   scope.querySelectorAll('.sub-panel').forEach(function(p){p.classList.remove('active');});
   var t = document.getElementById('subpanel-'+secId+'-'+tabId); if(t) t.classList.add('active');
-  scope.querySelectorAll('.sub-tab-btn, .sub-toc-btn').forEach(function(b){b.classList.remove('active');});
+  scope.querySelectorAll('.sub-tab-btn').forEach(function(b){b.classList.remove('active');});
   scope.querySelectorAll('[data-subtab="'+tabId+'"]').forEach(function(b){b.classList.add('active');});
+  // keep the sidebar's nested submenu (하위 뎁스), if present, in sync too
+  var sm = document.querySelector('.nav-submenu[data-parent="'+secId+'"]');
+  if(sm){
+    sm.querySelectorAll('button').forEach(function(b){b.classList.remove('active');});
+    var sb = sm.querySelector('[data-subtab="'+tabId+'"]'); if(sb) sb.classList.add('active');
+  }
+}
+function goPanelSubTab(secId, tabId){
+  goPanel(secId);
+  goSubTab(secId, tabId);
 }
 function showDetail(){
   document.getElementById('heroScreen').classList.remove('active');
@@ -2716,17 +2729,19 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           onClick={()=>onSelect(null)}>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
-            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)'}}>
-              <SidebarNav state={state} activeSectionId={activeSectionId} onSelect={(id)=>{
-                // clicking sidebar in canvas doesn't switch section; that's for real popup
-              }}/>
+            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
+              <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
+                onSelect={(id)=>{
+                  // clicking a top-level section in canvas doesn't switch section; that's for real popup
+                }}
+                onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
             </nav>
             {/* Content editable */}
             <div style={{flex:1, padding:'18px 44px 20px', overflowY:'auto'}}
               onDragOver={handleContainerDragOver}
               onDrop={handleContainerDrop}
             >
-              {!!(activeSec?.tabs?.length) && (activeSec.navMode || 'top') !== 'toc' && (
+              {!!(activeSec?.tabs?.length) && (activeSec.navMode==='top' || activeSec.navMode==='both' || !activeSec.navMode) && (
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
                   {activeSec.tabs.map(t => (
                     <button key={t.id} onClick={()=>onSelectTab(t.id)}
@@ -2734,21 +2749,6 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                       {t.label}
                     </button>
                   ))}
-                </div>
-              )}
-              {!!(activeSec?.tabs?.length) && (activeSec.navMode === 'toc' || activeSec.navMode === 'both') && (
-                <div style={{border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
-                  {activeSec.tabs.map((t, i) => {
-                    const tActive = t.id === activeTabId;
-                    return (
-                      <button key={t.id} onClick={()=>onSelectTab(t.id)}
-                        style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'12px 16px',border:'none',borderBottom: i<activeSec.tabs.length-1 ? '1px solid var(--line)':'none',background: tActive?'var(--grad-soft)':'#fff',cursor:'pointer'}}>
-                        <span style={{flex:'none',width:24,height:24,borderRadius:'50%',background: tActive?'var(--grad)':'var(--panel)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800}}>{i+1}</span>
-                        <span style={{flex:1,fontSize:13.5,fontWeight: tActive?700:600,color: tActive?'var(--blue-dark)':'var(--ink)'}}>{t.label}</span>
-                        <span style={{flex:'none',color:'var(--mute)',fontSize:13}}>›</span>
-                      </button>
-                    );
-                  })}
                 </div>
               )}
               {componentList.length === 0 && (
@@ -2772,7 +2772,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   );
 }
 
-function SidebarNav({ state, activeSectionId, onSelect }){
+function SidebarNav({ state, activeSectionId, activeTabId, onSelect, onSelectTab }){
   // Group sidebar items by group
   const grouped = {};
   (state.sidebar||[]).forEach(s => (grouped[s.group||'메뉴'] ||= []).push(s));
@@ -2781,12 +2781,31 @@ function SidebarNav({ state, activeSectionId, onSelect }){
     out.push(<div key={'g'+gi} style={{fontSize:12,color:'#9199A6',fontWeight:700,padding:'8px 10px 4px',letterSpacing:'.02em'}}>{g}</div>);
     grouped[g].forEach(s => {
       const active = s.id === activeSectionId;
+      const navMode = s.navMode || 'top';
+      const showSubmenu = active && !!(s.tabs && s.tabs.length) && (navMode === 'toc' || navMode === 'both');
       out.push(
         <button key={s.id} onClick={(e)=>{ e.stopPropagation(); onSelect(s.id); }}
           style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background: active ? '#fff' : 'none', border:'none',padding:'11px 12px',borderRadius:10,fontSize:14.5,color: active ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: active ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
           <span style={{flex:1}}>{s.label}</span>
         </button>
       );
+      // 하위 뎁스: 이 섹션의 탭들을 사이드바 안에 들여쓰기하여 표시 (목차 노출)
+      if(showSubmenu){
+        out.push(
+          <div key={s.id+'-sub'} style={{margin:'0 0 6px 12px',paddingLeft:10,borderLeft:'1.5px solid var(--line)'}}>
+            {s.tabs.map((t,ti) => {
+              const tActive = activeTabId === t.id;
+              return (
+                <button key={t.id} onClick={(e)=>{ e.stopPropagation(); onSelectTab && onSelectTab(s.id, t.id); }}
+                  style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',background: tActive ? '#fff' : 'none', border:'none',padding:'9px 10px',borderRadius:8,fontSize:13,color: tActive ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: tActive ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
+                  <span style={{flex:'none',width:18,height:18,borderRadius:'50%',background: tActive?'var(--grad)':'var(--line)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800}}>{ti+1}</span>
+                  <span style={{flex:1}}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
     });
   });
   return <div>{out}</div>;
