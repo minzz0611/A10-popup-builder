@@ -7,6 +7,17 @@ window.deepClone = function deepClone(obj){
   return JSON.parse(JSON.stringify(obj));
 };
 
+// Returns the ordered component-id list for whichever screen is currently
+// open (hero screen, a section, or a section's sub-tab) — the same list
+// both the canvas and the right-side property panel render from.
+window.getComponentList = function getComponentList(state, activeSectionId, activeTabId){
+  if(activeSectionId === null) return state.heroComponents || [];
+  const sec = (state.sidebar||[]).find(s => s.id === activeSectionId);
+  if(!sec) return [];
+  const tab = activeTabId ? (sec.tabs||[]).find(t => t.id === activeTabId) : null;
+  return tab ? (tab.components||[]) : (sec.components || []);
+};
+
 // Icon set (inline SVG components)
 const IconSvg = ({ path, size = 16, stroke = 'currentColor', fill = 'none', sw = 2 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -438,11 +449,19 @@ function HeroBlock({ data, editing, onChange }){
         style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
       <ET tag="p" value={d.body} onChange={(v)=>upd('body',v)} editing={editing} multiline
         style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,maxWidth:600,margin:'0 auto 14px'}}/>
-      {d.showCta !== false && (
+      {(d.showCta !== false || d.showVideoBtn) && (
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginTop:14}}>
-          <button style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad)',color:'#fff',border:'none',padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 18px rgba(80,90,255,.26)'}}>
-            <ET tag="span" value={d.ctaLabel} onChange={(v)=>upd('ctaLabel',v)} editing={editing}/> &nbsp;›
-          </button>
+          {d.showCta !== false && (
+            <button style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad)',color:'#fff',border:'none',padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 18px rgba(80,90,255,.26)'}}>
+              <ET tag="span" value={d.ctaLabel} onChange={(v)=>upd('ctaLabel',v)} editing={editing}/> &nbsp;›
+            </button>
+          )}
+          {d.showVideoBtn && (
+            <button style={{display:'inline-flex',alignItems:'center',gap:7,background:'#fff',color:'var(--blue-dark)',border:'1px solid var(--line)',padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:16,height:16,borderRadius:'50%',background:'var(--grad-soft)',fontSize:9}}>▶</span>
+              <ET tag="span" value={d.videoBtnLabel} onChange={(v)=>upd('videoBtnLabel',v)} editing={editing}/>
+            </button>
+          )}
         </div>
       )}
       {d.showImage !== false && (
@@ -649,11 +668,79 @@ function TableBlock({ data, editing, onChange }){
 // ============================================================
 function ImageBlock({ data, editing, onChange }){
   const d = data;
-  const h = d.height || 240;
+  const inputRef = rUseRef(null);
+  const wrapperRef = rUseRef(null);
+  const draggingRef = rUseRef(false);
+  const [live, setLive] = rUseState(null); // {width, height} while dragging
+
+  const width = live?.width ?? d.width ?? null; // null = 100% (fill container)
+  const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
+
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => onChange({ ...d, src:rd.result, originalSrc:rd.result, alt:f.name, cropInset:{top:0,right:0,bottom:0,left:0} });
+    rd.readAsDataURL(f);
+  };
+
+  // Drag the corner handle: width-only when the ratio is locked, width+height
+  // together once "비율에 맞지 않게 수정" is turned on.
+  const handleResizeStart = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const startW = rect.width, startH = rect.height;
+    document.body.style.cursor = d.freeAspect ? 'nwse-resize' : 'ew-resize';
+    const compute = (ev) => {
+      const w = Math.max(120, Math.min(900, Math.round(startW + (ev.clientX - startX))));
+      if(!d.freeAspect) return { width:w };
+      const h = Math.max(60, Math.min(700, Math.round(startH + (ev.clientY - startY))));
+      return { width:w, height:h };
+    };
+    const onMove = (ev) => { if(draggingRef.current) setLive(compute(ev)); };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        onChange({ ...d, ...compute(ev) });
+        setLive(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   return (
     <div>
-      <EImg src={d.src} editing={editing} onChange={(v)=>onChange({...d, src:v.src, alt:v.name})}
-        style={{width:'100%',height:h,borderRadius:12,overflow:'hidden'}}/>
+      {d.src ? (
+        <div ref={wrapperRef} style={{position:'relative', width: width ? width : '100%', maxWidth:'100%'}}>
+          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto'}}>
+            <img src={d.src} alt={d.alt||''} style={{
+              width:'100%',
+              height: d.freeAspect ? '100%' : 'auto',
+              objectFit: d.freeAspect ? 'fill' : undefined,
+              display:'block',
+            }}/>
+          </div>
+          {editing && (
+            <>
+              <button onClick={(e)=>{e.stopPropagation(); inputRef.current && inputRef.current.click();}}
+                style={{position:'absolute',right:8,bottom:8,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'6px 10px',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:700}}
+              >이미지 변경</button>
+              <div onMouseDown={handleResizeStart} title={d.freeAspect ? '드래그하여 가로·세로 크기 조절' : '드래그하여 너비 조절 (비율 유지)'}
+                style={{position:'absolute',right:-6,bottom:-6,width:14,height:14,borderRadius:4,background:'var(--blue)',border:'2px solid #fff',boxShadow:'0 1px 4px rgba(0,0,0,.3)',cursor: d.freeAspect ? 'nwse-resize' : 'ew-resize'}}/>
+            </>
+          )}
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+        </div>
+      ) : (
+        <EImg src="" editing={editing} onChange={(v)=>onChange({...d, src:v.src, originalSrc:v.src, alt:v.name})}
+          style={{width:'100%',height:d.height||240,borderRadius:12}}/>
+      )}
       {(d.caption || editing) && (
         <ET tag="div" value={d.caption} onChange={(v)=>onChange({...d, caption:v})} editing={editing} placeholder="이미지 설명 (선택)"
           style={{marginTop:8,fontSize:12,color:'var(--sub)',textAlign:'center',lineHeight:1.5,minHeight: editing?18:0}}/>
@@ -813,7 +900,7 @@ window.RENDERERS = {
 };
 
 window.COMPONENT_META = [
-  { type:'hero', label:'히어로 섹션', icon:'Star', group:'헤더', desc:'배지 · 제목 · CTA · 미니 대시보드' },
+  { type:'hero', label:'표지 (히어로)', icon:'Star', group:'헤더', desc:'배지 · 제목 · CTA · 이미지 · 동영상 버튼', hidden:true },
   { type:'section-heading', label:'섹션 헤딩', icon:'Heading', group:'헤더', desc:'제목과 부연 설명' },
   { type:'kpi-grid', label:'KPI 카드', icon:'Grid', group:'데이터', desc:'수치 지표 카드 그리드' },
   { type:'table', label:'표 / 테이블', icon:'Table', group:'데이터', desc:'행과 열의 데이터' },
@@ -835,6 +922,7 @@ window.DEFAULT_DATA = {
     subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
     body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
     ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
+    showVideoBtn:false, videoBtnLabel:'동영상 보기',
   }),
   'kpi-grid': () => ({ cols:3, items:[
     {label:'매출액',value:'₩482M',delta:'+12.3%'},
@@ -871,7 +959,7 @@ window.DEFAULT_DATA = {
       ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
     ],
   }),
-  'image': () => ({ src:'', alt:'', caption:'', height:240 }),
+  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0} }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
     {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},
@@ -951,7 +1039,7 @@ function renderComponentsToHTML(components, order){
           {order.map(cid => {
             const c = components[cid]; if(!c) return null;
             const R = window.RENDERERS[c.type];
-            return <div key={cid} data-comp-type={c.type} style={{marginBottom:6}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
+            return <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 6}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
           })}
         </div>
       </React.StrictMode>
@@ -1209,6 +1297,92 @@ function ContextMenu({ x, y, onClose, actions }){
 }
 window.ContextMenu = ContextMenu;
 
+// Shown when a JSON edit-state file is loaded while a project is already
+// open. Lets the person either fully replace the current project (old
+// behavior) or pick specific pages (표지/섹션) to bring into it instead.
+const { useState: iUseState } = React;
+
+function ImportModal({ source, onCancel, onReplace, onImport }){
+  const pages = [];
+  if((source.heroComponents||[]).length){
+    pages.push({ key:'hero', label:'표지 (히어로 화면) — 선택 시 현재 표지를 교체', icon:'🏠' });
+  }
+  (source.sidebar||[]).forEach(sec => {
+    const tabCount = sec.tabs?.length || 0;
+    pages.push({
+      key:'sec:'+sec.id,
+      label: sec.label + (tabCount ? ` (하위 탭 ${tabCount}개 포함)` : ''),
+      icon: sec.kind === 'cover' ? '🖼️' : '📄',
+    });
+  });
+
+  const [checked, setChecked] = iUseState(() => {
+    const init = {};
+    pages.forEach(p => { init[p.key] = true; });
+    return init;
+  });
+
+  const toggle = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }));
+  const selectedCount = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(20,25,40,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100}}
+      onClick={onCancel}>
+      <div style={{width:440,maxHeight:'80vh',display:'flex',flexDirection:'column',background:'#fff',borderRadius:14,boxShadow:'var(--shadow-lg)',overflow:'hidden'}}
+        onClick={(e)=>e.stopPropagation()}>
+        <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--line)'}}>
+          <div style={{fontSize:15,fontWeight:800,color:'var(--ink)'}}>JSON 파일 불러오기</div>
+          <div style={{fontSize:12,color:'var(--mute)',marginTop:4}}>
+            "{source.meta?.title || '제목 없음'}"에서 가져올 방식을 선택하세요.
+          </div>
+        </div>
+
+        <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'14px 20px'}}>
+          {pages.length === 0 ? (
+            <div style={{padding:'20px 0',textAlign:'center',color:'var(--mute)',fontSize:12.5}}>이 파일에는 가져올 페이지가 없습니다.</div>
+          ) : (
+            <>
+              <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:8}}>
+                선택한 페이지만 가져오기
+              </div>
+              {pages.map(p => (
+                <label key={p.key}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'9px 10px',border:'1px solid var(--line)',borderRadius:9,marginBottom:6,cursor:'pointer',background: checked[p.key] ? 'var(--grad-soft)' : '#fff'}}>
+                  <input type="checkbox" checked={!!checked[p.key]} onChange={()=>toggle(p.key)}
+                    style={{width:16,height:16,accentColor:'var(--blue)',margin:0,flex:'none'}}/>
+                  <span style={{flex:'none'}}>{p.icon}</span>
+                  <span style={{flex:1,minWidth:0,fontSize:12.5,fontWeight:700,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.label}</span>
+                </label>
+              ))}
+              <div style={{fontSize:11,color:'var(--mute)',marginTop:6,lineHeight:1.5}}>
+                선택한 섹션은 현재 프로젝트 목차 맨 아래에 새로운 항목으로 추가됩니다. 표지를 선택하면 현재 표지 내용이 교체됩니다. 기존 섹션 내용은 지워지지 않습니다.
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{padding:'14px 20px',borderTop:'1px solid var(--line)',display:'flex',flexDirection:'column',gap:8}}>
+          <button onClick={()=>onImport(pages.filter(p=>checked[p.key]).map(p=>p.key))}
+            disabled={pages.length===0 || selectedCount===0}
+            style={{width:'100%',padding:'10px',border:'none',borderRadius:9,background: (pages.length===0||selectedCount===0) ? 'var(--mute)' : 'var(--grad)',color:'#fff',fontSize:13,fontWeight:700,cursor: (pages.length===0||selectedCount===0) ? 'default' : 'pointer'}}>
+            선택한 페이지 가져오기 ({selectedCount})
+          </button>
+          <button onClick={onReplace}
+            style={{width:'100%',padding:'10px',border:'1px solid var(--line)',borderRadius:9,background:'#fff',color:'var(--ink)',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            전체 교체 (현재 프로젝트 덮어쓰기)
+          </button>
+          <button onClick={onCancel}
+            style={{width:'100%',padding:'8px',border:'none',background:'transparent',color:'var(--mute)',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.ImportModal = ImportModal;
+
 // Right-side property panel — edits data & style of selected component
 const { useState: pUseState } = React;
 
@@ -1403,6 +1577,79 @@ function ArrayEditor({ items, onChange, itemLabel = '항목', renderItem, defaul
 // ============================================================
 // Per-component editor dispatch
 // ============================================================
+// ------- Image crop editor: preview via canvas, bakes the crop into a new
+// data URL only when "적용" is pressed. Always crops from the original
+// upload (image.originalSrc) so re-cropping never compounds quality loss
+// and areas cropped away earlier can be brought back. -------
+function ImageCropEditor({ image, onApply, onReset }){
+  const [inset, setInset] = pUseState(image.cropInset || {top:0,right:0,bottom:0,left:0});
+  const canvasRef = React.useRef(null);
+  const imgElRef = React.useRef(null);
+  const sourceSrc = image.originalSrc || image.src;
+
+  const draw = () => {
+    const img = imgElRef.current;
+    const canvas = canvasRef.current;
+    if(!img || !canvas || !img.naturalWidth) return;
+    const { top, right, bottom, left } = inset;
+    const sx = img.naturalWidth * (left/100);
+    const sy = img.naturalHeight * (top/100);
+    const sw = Math.max(1, img.naturalWidth * (1 - (left+right)/100));
+    const sh = Math.max(1, img.naturalHeight * (1 - (top+bottom)/100));
+    canvas.width = sw; canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,sw,sh);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  };
+
+  React.useEffect(() => {
+    const img = new window.Image();
+    img.onload = () => { imgElRef.current = img; draw(); };
+    img.src = sourceSrc;
+    // eslint-disable-next-line
+  }, [sourceSrc]);
+
+  React.useEffect(() => { draw(); }, [inset]);
+
+  const setPart = (k, v) => {
+    setInset(prev => {
+      const next = { ...prev, [k]: v };
+      if(next.left + next.right > 90){ if(k==='left') next.right = 90-next.left; else next.left = 90-next.right; }
+      if(next.top + next.bottom > 90){ if(k==='top') next.bottom = 90-next.top; else next.top = 90-next.bottom; }
+      return next;
+    });
+  };
+
+  const slider = (label, key) => (
+    <div>
+      <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:3}}>{label} {inset[key]}%</div>
+      <input type="range" min={0} max={80} value={inset[key]} onChange={(e)=>setPart(key, Number(e.target.value))} style={{width:'100%'}}/>
+    </div>
+  );
+
+  return (
+    <Field label="자르기" hint="미리보기를 조절한 뒤 '자르기 적용'을 눌러야 반영됩니다.">
+      <div style={{border:'1px solid var(--line)',borderRadius:8,padding:10,background:'#FAFBFC'}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:10,background:'#EAECEF',borderRadius:6,overflow:'hidden',padding:4}}>
+          <canvas ref={canvasRef} style={{maxWidth:'100%',maxHeight:180,display:'block'}}/>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+          {slider('위쪽','top')}
+          {slider('아래쪽','bottom')}
+          {slider('왼쪽','left')}
+          {slider('오른쪽','right')}
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>{ const c = canvasRef.current; if(c) onApply(c.toDataURL('image/png'), inset); }}
+            style={{flex:1,padding:'7px 8px',border:'none',background:'var(--grad)',color:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer'}}>자르기 적용</button>
+          <button onClick={()=>{ setInset({top:0,right:0,bottom:0,left:0}); onReset(); }}
+            style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer'}}>원본으로 초기화</button>
+        </div>
+      </div>
+    </Field>
+  );
+}
+
 function CompEditor({ comp, onChange }){
   const t = comp.type;
   const d = comp.data;
@@ -1417,6 +1664,10 @@ function CompEditor({ comp, onChange }){
         <Field label="본문"><TextInput value={d.body} onChange={(v)=>set('body',v)} multiline rows={3}/></Field>
         <Field label="CTA 버튼 라벨"><TextInput value={d.ctaLabel} onChange={(v)=>set('ctaLabel',v)}/></Field>
         <Field label=" "><Toggle value={d.showCta!==false} onChange={(v)=>set('showCta',v)} label="CTA 버튼 표시"/></Field>
+        <Field label=" "><Toggle value={!!d.showVideoBtn} onChange={(v)=>set('showVideoBtn',v)} label="동영상 버튼 표시"/></Field>
+        {d.showVideoBtn && (
+          <Field label="동영상 버튼 라벨"><TextInput value={d.videoBtnLabel} onChange={(v)=>set('videoBtnLabel',v)}/></Field>
+        )}
         <Field label=" "><Toggle value={d.showImage!==false} onChange={(v)=>set('showImage',v)} label="이미지 표시"/></Field>
         {d.showImage!==false && (
           <Field label="히어로 이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
@@ -1620,11 +1871,11 @@ function CompEditor({ comp, onChange }){
   if(t === 'image'){
     return (
       <div>
-        <Field label="이미지" hint="캔버스에서 직접 클릭해서도 업로드할 수 있습니다.">
+        <Field label="이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
           {d.src ? (
             <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1px solid var(--line)'}}>
               <img src={d.src} style={{width:'100%',display:'block'}}/>
-              <button onClick={()=>set('src','')}
+              <button onClick={()=>onChange({...d, src:'', originalSrc:'', cropInset:{top:0,right:0,bottom:0,left:0}})}
                 style={{position:'absolute',right:6,top:6,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'4px 8px',borderRadius:5,cursor:'pointer',fontSize:11}}>삭제</button>
             </div>
           ) : (
@@ -1632,13 +1883,41 @@ function CompEditor({ comp, onChange }){
               📁 이미지 업로드
               <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{
                 const f = e.target.files && e.target.files[0]; if(!f) return;
-                const rd = new FileReader(); rd.onload = () => onChange({ ...d, src:rd.result, alt:f.name }); rd.readAsDataURL(f);
+                const rd = new FileReader(); rd.onload = () => onChange({ ...d, src:rd.result, originalSrc:rd.result, alt:f.name, cropInset:{top:0,right:0,bottom:0,left:0} }); rd.readAsDataURL(f);
               }}/>
             </label>
           )}
         </Field>
+
+        {d.src && (
+          <>
+            <Field label=" "><Toggle value={!!d.freeAspect} onChange={(v)=>set('freeAspect',v)} label="비율에 맞지 않게 수정"/></Field>
+
+            {!d.freeAspect ? (
+              <Field label={`너비 (${d.width ? d.width+'px' : '전체 너비'})`} hint="원본 이미지의 가로·세로 비율이 그대로 유지됩니다.">
+                <input type="range" min={120} max={900} step={10}
+                  value={d.width || 640}
+                  onChange={(e)=>set('width', Number(e.target.value))}
+                  style={{width:'100%'}}/>
+              </Field>
+            ) : (
+              <>
+                <Field label={`너비 (${d.width||640}px)`} hint="비율을 무시하고 가로·세로를 각각 지정합니다.">
+                  <input type="range" min={120} max={900} step={10} value={d.width||640} onChange={(e)=>set('width',Number(e.target.value))} style={{width:'100%'}}/>
+                </Field>
+                <Field label={`높이 (${d.height||240}px)`}>
+                  <input type="range" min={60} max={700} step={10} value={d.height||240} onChange={(e)=>set('height',Number(e.target.value))} style={{width:'100%'}}/>
+                </Field>
+              </>
+            )}
+
+            <ImageCropEditor image={d}
+              onApply={(newSrc, cropInset)=>onChange({...d, src:newSrc, cropInset})}
+              onReset={()=>onChange({...d, src:d.originalSrc||d.src, cropInset:{top:0,right:0,bottom:0,left:0}})}/>
+          </>
+        )}
+
         <Field label="캡션 (선택)"><TextInput value={d.caption} onChange={(v)=>set('caption',v)} multiline rows={2}/></Field>
-        <Field label="높이 (px)"><NumberInput value={d.height||240} onChange={(v)=>set('height',v)} min={80} max={800} step={20}/></Field>
       </div>
     );
   }
@@ -1725,72 +2004,112 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, onUpdateComp, onProjectUpdate, onDelete, onDuplicate }){
-  if(!selectedId){
-    // No selection → show popup / project meta
-    return (
-      <div style={{padding:'18px 18px'}}>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:12}}>팝업 설정</div>
-        <Field label="프로젝트 제목">
-          <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
-        </Field>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'22px 0 12px'}}>푸터</div>
-        <Field label="이용 링크 (콤마 구분)">
-          <TextInput value={(state.popup.footer.links||[]).join(', ')} onChange={(v)=>onProjectUpdate({ popup:{ ...state.popup, footer:{ ...state.popup.footer, links: v.split(',').map(x=>x.trim()).filter(Boolean)}}})}/>
-        </Field>
-        <Field label="고객센터 전화번호">
-          <TextInput value={state.popup.footer.phone} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, phone:v}}})}/>
-        </Field>
-        <Field label="URL">
-          <TextInput value={state.popup.footer.url} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, url:v}}})}/>
-        </Field>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'22px 0 12px'}}>옵션</div>
-        <Field label=" ">
-          <Toggle value={state.popup.dontShowOption} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, dontShowOption:v}})} label="'다시 보지 않기' 체크박스 표시"/>
-        </Field>
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate }){
+  const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
-        <div style={{marginTop:24,padding:'14px 14px',background:'var(--grad-soft)',borderRadius:10,fontSize:12,color:'var(--blue-dark)',lineHeight:1.6}}>
-          <b>💡 편집 팁</b>
-          <div style={{marginTop:6, color:'#3B4250'}}>
-            • 캔버스의 요소를 <b>클릭</b>하면 이 패널에서 편집할 수 있습니다.<br/>
-            • <b>더블클릭</b>으로 텍스트를 바로 편집합니다.<br/>
-            • <b>드래그</b>로 요소 위치를 변경합니다.<br/>
-            • <b>우클릭</b>으로 복제/삭제 메뉴를 엽니다.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const comp = state.components[selectedId];
-  if(!comp) return null;
-  const meta = window.COMPONENT_META.find(m => m.type === comp.type);
+  const componentList = window.getComponentList(state, activeSectionId, activeTabId);
+  const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s => s.id === activeSectionId);
+  const activeTab = activeSec?.tabs?.find(t => t.id === activeTabId) || null;
+  const screenLabel = activeSectionId === null
+    ? '🏠 표지'
+    : `${activeSec?.kind === 'cover' ? '🖼️' : '📄'} ${activeSec?.label || ''}${activeTab ? ` · ${activeTab.label}` : ''}`;
 
   return (
-    <div style={{padding:'18px 18px',display:'flex',flexDirection:'column',height:'100%'}}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16,paddingBottom:14,borderBottom:'1px solid var(--line)'}}>
-        <div style={{width:34,height:34,borderRadius:8,background:'var(--grad)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          {window.Icons[meta?.icon || 'Grid']({size:18})}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:800,color:'var(--ink)'}}>{meta?.label || comp.type}</div>
-          <div style={{fontSize:11,color:'var(--mute)'}}>선택된 컴포넌트 편집</div>
-        </div>
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+      {/* 현재 화면에서 사용 중인 컴포넌트 목록 (화면상 위치 순서) */}
+      <div style={{flex:'none',padding:'16px 16px 10px',borderBottom:'1px solid var(--line)'}}>
+        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:5}}>컴포넌트 목록</div>
+        <div style={{fontSize:13,fontWeight:800,color:'var(--ink)'}}>{screenLabel}</div>
+        <div style={{fontSize:11,color:'var(--mute)',marginTop:3,lineHeight:1.5}}>화면에 보이는 순서대로 표시됩니다. 클릭하면 아래에 상세 내용이 열려요.</div>
       </div>
 
-      <div style={{flex:1, minHeight:0, overflowY:'auto', paddingRight:4, marginRight:-4}}>
-        <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+      <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'10px'}}>
+        {componentList.length === 0 && (
+          <div style={{padding:'28px 12px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6}}>
+            아직 추가된 컴포넌트가 없어요.<br/>좌측 팔레트에서 추가해 보세요.
+          </div>
+        )}
+        {componentList.map((cid, idx) => {
+          const comp = state.components[cid];
+          if(!comp) return null;
+          const meta = window.COMPONENT_META.find(m => m.type === comp.type);
+          const expanded = selectedId === cid;
+          const isLast = idx === componentList.length - 1;
+          return (
+            <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
+              <button onClick={()=>onSelect(expanded ? null : cid)}
+                style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'10px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left'}}>
+                <span style={{flex:'none',fontSize:11,color:'var(--mute)',fontWeight:700,width:14,textAlign:'center'}}>{idx+1}</span>
+                <div style={{flex:'none',width:26,height:26,borderRadius:7,background: expanded ? 'var(--grad)' : 'var(--panel)',color: expanded ? '#fff':'var(--blue-dark)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {window.Icons[meta?.icon || 'Grid']({size:14})}
+                </div>
+                <span style={{flex:1,minWidth:0,fontSize:12.5,fontWeight:700,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{meta?.label || comp.type}</span>
+                <span style={{flex:'none',fontSize:13,color:'var(--mute)',transform: expanded ? 'rotate(90deg)':'none',transition:'transform .15s'}}>›</span>
+              </button>
+
+              {expanded && (
+                <div style={{padding:'2px 12px 14px',borderTop:'1px solid var(--line)'}}>
+                  <div style={{paddingTop:12}}>
+                    <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+                  </div>
+
+                  {!isLast && (
+                    <Field label="다음 컴포넌트와의 간격" hint="캔버스에서 컴포넌트 사이를 직접 드래그해도 조절할 수 있어요.">
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <input type="range" min={0} max={120} step={2}
+                          value={comp.style?.gapAfter ?? 6}
+                          onChange={(e)=>onUpdateStyle && onUpdateStyle(comp.id, { gapAfter:Number(e.target.value) })}
+                          style={{flex:1}}/>
+                        <span style={{flex:'none',fontSize:12,color:'var(--sub)',fontWeight:700,width:42,textAlign:'right'}}>{comp.style?.gapAfter ?? 6}px</span>
+                      </div>
+                    </Field>
+                  )}
+
+                  <div style={{display:'flex',gap:6,paddingTop:10,borderTop:'1px solid var(--line)',marginTop:6}}>
+                    <button onClick={()=>onDuplicate(comp.id)}
+                      style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                      {window.Icons.Copy({size:12})} 복제
+                    </button>
+                    <button onClick={()=>onDelete(comp.id)}
+                      style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                      {window.Icons.Trash({size:12})} 삭제
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{display:'flex',gap:6,paddingTop:14,borderTop:'1px solid var(--line)',marginTop:10}}>
-        <button onClick={()=>onDuplicate(comp.id)}
-          style={{flex:1,padding:'8px 10px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:12,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {window.Icons.Copy({size:13})} 복제
+      {/* 팝업 전체 설정 - 접이식, 목록 아래에 위치 */}
+      <div style={{flex:'none',borderTop:'1px solid var(--line)'}}>
+        <button onClick={()=>setShowPopupSettings(v=>!v)}
+          style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',border:'none',background:'transparent',cursor:'pointer'}}>
+          <span style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em'}}>팝업 설정</span>
+          <span style={{fontSize:12,color:'var(--mute)',transform: showPopupSettings ? 'rotate(90deg)':'none',transition:'transform .15s'}}>›</span>
         </button>
-        <button onClick={()=>onDelete(comp.id)}
-          style={{flex:1,padding:'8px 10px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:12,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {window.Icons.Trash({size:13})} 삭제
-        </button>
+        {showPopupSettings && (
+          <div style={{padding:'0 16px 18px',maxHeight:360,overflowY:'auto'}}>
+            <Field label="프로젝트 제목">
+              <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>푸터</div>
+            <Field label="이용 링크 (콤마 구분)">
+              <TextInput value={(state.popup.footer.links||[]).join(', ')} onChange={(v)=>onProjectUpdate({ popup:{ ...state.popup, footer:{ ...state.popup.footer, links: v.split(',').map(x=>x.trim()).filter(Boolean)}}})}/>
+            </Field>
+            <Field label="고객센터 전화번호">
+              <TextInput value={state.popup.footer.phone} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, phone:v}}})}/>
+            </Field>
+            <Field label="URL">
+              <TextInput value={state.popup.footer.url} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, url:v}}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>옵션</div>
+            <Field label=" ">
+              <Toggle value={state.popup.dontShowOption} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, dontShowOption:v}})} label="'다시 보지 않기' 체크박스 표시"/>
+            </Field>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1807,6 +2126,7 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
 
   const grouped = {};
   window.COMPONENT_META.forEach(m => {
+    if(m.hidden) return;
     (grouped[m.group] ||= []).push(m);
   });
 
@@ -1816,7 +2136,7 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
   };
 
   // ------- Target label (where a clicked/dropped component will land) -------
-  let targetLabel = '히어로 화면';
+  let targetLabel = '표지';
   const activeSec = (state.sidebar||[]).find(s => s.id === activeSectionId);
   if(activeSec){
     targetLabel = activeSec.label;
@@ -1825,7 +2145,8 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
       if(t) targetLabel = `${activeSec.label} · ${t.label}`;
     }
   }
-  const isCoverActive = activeSec?.kind === 'cover';
+  const isCoverActive = activeSectionId === null || activeSec?.kind === 'cover';
+  const isCoverEmpty = isCoverActive && window.getComponentList(state, activeSectionId, activeTabId).length === 0;
 
   // ------- Resizer drag handling -------
   const handleResizeStart = (e) => {
@@ -1889,15 +2210,25 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
           <div style={{fontSize:12.5,fontWeight:800,color:'var(--ink)',letterSpacing:'-.01em',marginBottom:5}}>컴포넌트</div>
           <div style={{fontSize:11,color:'var(--mute)',lineHeight:1.5}}>
             {isCoverActive
-              ? <>표지 섹션은 <b style={{color:'var(--blue-dark)'}}>히어로 컴포넌트</b>만 사용할 수 있습니다.</>
+              ? <>표지는 <b style={{color:'var(--blue-dark)'}}>히어로 컴포넌트</b>만 사용할 수 있습니다.</>
               : <>드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{targetLabel}</b>에 추가됩니다.</>}
           </div>
         </div>
         <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
           {isCoverActive ? (
-            <div style={{padding:'22px 14px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6,border:'1.5px dashed var(--line)',borderRadius:10}}>
-              🖼️<br/>표지 섹션에는 히어로 컴포넌트가<br/>자동으로 적용되어 있어요.<br/>다른 컴포넌트는 추가할 수 없습니다.
-            </div>
+            isCoverEmpty ? (
+              <div
+                onClick={()=>onAddComponent('hero')}
+                style={{padding:'22px 14px',textAlign:'center',color:'var(--blue-dark)',fontSize:12,fontWeight:700,lineHeight:1.6,border:'1.5px dashed var(--blue)',background:'var(--grad-soft)',borderRadius:10,cursor:'pointer'}}
+              >
+                🖼️<br/>히어로 컴포넌트 추가
+                <div style={{fontSize:11,color:'var(--mute)',fontWeight:500,marginTop:4}}>클릭하면 표지에 히어로 컴포넌트가 채워집니다.</div>
+              </div>
+            ) : (
+              <div style={{padding:'22px 14px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6,border:'1.5px dashed var(--line)',borderRadius:10}}>
+                🖼️<br/>표지에는 히어로 컴포넌트가<br/>자동으로 적용되어 있어요.<br/>다른 컴포넌트는 추가할 수 없습니다.
+              </div>
+            )
           ) : Object.keys(grouped).map(g => (
             <div key={g} style={{marginBottom:14}}>
               <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'0 4px 6px'}}>{g}</div>
@@ -1948,7 +2279,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
     <button key="hero" onClick={()=>onSelectSection(null)}
       style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:8,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
       <span>🏠</span>
-      <span style={{flex:1}}>히어로 화면</span>
+      <span style={{flex:1}}>표지</span>
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
@@ -2058,27 +2389,11 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       activeSectionId: id,
     });
   };
-  const addCoverSection = () => {
-    const id = window.uid('sec');
-    const heroId = window.uid('c');
-    const num = (state.sidebar||[]).length + 1;
-    onProjectUpdate({
-      components: { ...state.components, [heroId]: { id:heroId, type:'hero', data: window.DEFAULT_DATA.hero(), style:{spanCols:12} } },
-      sidebar: [...(state.sidebar||[]), { id, label:`표지 ${num}`, group:'메뉴', kind:'cover', components: [heroId] }],
-      activeSectionId: id,
-    });
-  };
   rows.push(
-    <div key="addsec" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:6}}>
-      <button onClick={addCoverSection}
-        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--purple)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
-        + 표지 추가
-      </button>
-      <button onClick={addFeatureSection}
-        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
-        + 기능 소개 추가
-      </button>
-    </div>
+    <button key="addsec" onClick={addFeatureSection}
+      style={{width:'100%',padding:'8px',marginTop:6,border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+      + 섹션 추가
+    </button>
   );
 
   return <div>{rows}</div>;
@@ -2110,7 +2425,6 @@ function CompFrame({ comp, selected, onSelect, onContextMenu, isDragOver, dragOv
         outlineOffset: 2,
         transition:'outline .12s',
         cursor: 'grab',
-        marginBottom: 6,
       }}
     >
       {/* Drop indicator */}
@@ -2136,10 +2450,65 @@ function CompFrame({ comp, selected, onSelect, onContextMenu, isDragOver, dragOv
   );
 }
 
+// ------- Figma-style spacing handle between two components -------
+// Renders as an empty spacer the height of the gap; hovering/dragging
+// reveals a draggable guide so the gap between component A and B can be
+// adjusted directly on the canvas.
+const GAP_MIN = 0, GAP_MAX = 120;
+function GapHandle({ gap, onChange }){
+  const draggingRef = cUseRef(false);
+  const [liveGap, setLiveGap] = cUseState(null);
+  const [hover, setHover] = cUseState(false);
+  const value = liveGap != null ? liveGap : gap;
+
+  const handleDown = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const startY = e.clientY;
+    const startGap = gap;
+    document.body.style.cursor = 'ns-resize';
+    const onMove = (ev) => {
+      if(!draggingRef.current) return;
+      setLiveGap(Math.max(GAP_MIN, Math.min(GAP_MAX, startGap + (ev.clientY - startY))));
+    };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        const g = Math.max(GAP_MIN, Math.min(GAP_MAX, startGap + (ev.clientY - startY)));
+        onChange(g);
+        setLiveGap(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const active = hover || liveGap != null;
+  return (
+    <div
+      onClick={(e)=>e.stopPropagation()}
+      onMouseEnter={()=>setHover(true)}
+      onMouseLeave={()=>setHover(false)}
+      onMouseDown={handleDown}
+      style={{ position:'relative', height: Math.max(value, 10), cursor:'ns-resize' }}
+    >
+      {active && (
+        <>
+          <div style={{position:'absolute',left:0,right:0,top:'50%',height:2,background:'var(--blue)',opacity:.55,transform:'translateY(-1px)'}}/>
+          <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',background:'var(--blue)',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,whiteSpace:'nowrap',boxShadow:'0 2px 6px rgba(0,0,0,.25)',zIndex:6}}>{value}px</div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ============================================================
 // Canvas
 // ============================================================
-function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onReorder, onContextMenu, targetSection, previewOnly }){
+function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onUpdateStyle, onReorder, onContextMenu, targetSection, previewOnly }){
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
@@ -2148,11 +2517,35 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
 
   // Current list of components based on active section (and sub-tab, if any)
-  const componentList = activeSectionId === null
-    ? (state.heroComponents || [])
-    : (activeTab ? activeTab.components : (activeSec?.components || []));
+  const componentList = window.getComponentList(state, activeSectionId, activeTabId);
 
   const editing = !previewOnly;
+
+  // Renders the component list with a Figma-style, draggable spacing
+  // handle between each pair — the single place both screens pull from.
+  const renderComponentList = () => {
+    const out = [];
+    componentList.forEach((cid, idx) => {
+      const c = state.components[cid];
+      if(!c) return;
+      const R = window.RENDERERS[c.type];
+      out.push(
+        <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
+          isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
+          onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
+          <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
+        </CompFrame>
+      );
+      if(idx < componentList.length - 1){
+        const gap = c.style?.gapAfter ?? 6;
+        out.push(editing
+          ? <GapHandle key={cid+'-gap'} gap={gap} onChange={(g)=>onUpdateStyle && onUpdateStyle(cid, { gapAfter: g })}/>
+          : <div key={cid+'-gap'} style={{height:gap}}/>
+        );
+      }
+    });
+    return out;
+  };
 
   const handleDragStart = (e, id) => {
     draggingCompId.current = id;
@@ -2216,7 +2609,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
         <div style={{maxWidth:900, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
-            🏠 히어로 화면 (팝업 첫 진입 시 표시)
+            🏠 표지 (팝업 첫 진입 시 표시)
           </div>
           <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative'}}
             onClick={()=>onSelect(null)}
@@ -2227,23 +2620,12 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             <div style={{padding:'12px 14px'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
-                  <div style={{fontSize:32, marginBottom:12}}>📥</div>
-                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>여기에 컴포넌트를 드래그하세요</div>
-                  <div style={{fontSize:12}}>또는 좌측 팔레트에서 클릭하여 추가할 수 있습니다.</div>
+                  <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
+                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>표지는 히어로 컴포넌트로 채워집니다</div>
+                  <div style={{fontSize:12}}>좌측 팔레트에서 히어로 컴포넌트를 클릭해 추가하세요.</div>
                 </div>
               )}
-              {componentList.map(cid => {
-                const c = state.components[cid];
-                if(!c) return null;
-                const R = window.RENDERERS[c.type];
-                return (
-                  <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
-                    isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-                    <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
-                  </CompFrame>
-                );
-              })}
+              {renderComponentList()}
             </div>
             {/* Footer preview */}
             <PopupFooter state={state}/>
@@ -2295,18 +2677,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                   </div>
                 </div>
               )}
-              {componentList.map(cid => {
-                const c = state.components[cid];
-                if(!c) return null;
-                const R = window.RENDERERS[c.type];
-                return (
-                  <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
-                    isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-                    <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
-                  </CompFrame>
-                );
-              })}
+              {renderComponentList()}
             </div>
           </div>
           <PopupFooter state={state}/>
@@ -2364,7 +2735,7 @@ window.PopupFooter = PopupFooter;
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
 
@@ -2444,7 +2815,7 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenP
           const f = e.target.files && e.target.files[0]; if(!f) return;
           const rd = new FileReader();
           rd.onload = () => {
-            try { onLoadJson(JSON.parse(rd.result)); }
+            try { onImportJson(JSON.parse(rd.result)); }
             catch(err){ alert('JSON 파일을 읽을 수 없습니다: ' + err.message); }
           };
           rd.readAsText(f);
@@ -2738,6 +3109,7 @@ function App(){
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
+  const [importObj, setImportObj] = useState(null); // parsed JSON awaiting 전체교체/선택가져오기 결정
   const history = useRef({ past:[], future:[] });
 
   // ------- Boot: load from localStorage or show gallery -------
@@ -2826,6 +3198,76 @@ function App(){
     setShowGallery(false);
   };
 
+  // Toolbar's "JSON 불러오기" (used while a project is already open) — don't
+  // replace immediately; open a picker so the person can choose 전체 교체
+  // vs 선택한 페이지만 가져오기.
+  const handleImportFileLoaded = (obj) => {
+    if(!obj || !obj.components || !obj.meta){ alert('올바르지 않은 편집상태 파일입니다.'); return; }
+    setImportObj(obj);
+  };
+
+  const handleImportReplace = () => {
+    if(importObj) loadJson(importObj);
+    setImportObj(null);
+  };
+
+  const handleImportCancel = () => setImportObj(null);
+
+  // Copies the selected pages (표지/섹션, with their components and tabs)
+  // from the loaded JSON into the current project, generating fresh ids so
+  // nothing collides with what's already here. Existing sections are kept;
+  // 표지(히어로 화면)는 하나뿐이므로 선택 시 현재 표지를 가져온 내용으로 교체한다.
+  const handleImportPages = (selectedKeys) => {
+    const source = importObj;
+    if(!source || !state || !selectedKeys.length) return;
+
+    const idMap = {};
+    const components = { ...state.components };
+    const cloneComponent = (cid) => {
+      const orig = source.components?.[cid];
+      if(!orig) return null;
+      if(idMap[cid]) return idMap[cid];
+      const newId = window.uid('c');
+      idMap[cid] = newId;
+      components[newId] = { ...window.deepClone(orig), id:newId };
+      return newId;
+    };
+
+    let newHeroComponents = null;
+    const newSections = [];
+    selectedKeys.forEach(key => {
+      if(key === 'hero'){
+        const heroIds = (source.heroComponents||[]).map(cloneComponent).filter(Boolean);
+        if(heroIds.length) newHeroComponents = heroIds;
+      } else if(key.startsWith('sec:')){
+        const sec = (source.sidebar||[]).find(s => s.id === key.slice(4));
+        if(!sec) return;
+        const comps = (sec.components||[]).map(cloneComponent).filter(Boolean);
+        const tabs = (sec.tabs||[]).map(t => ({
+          id: window.uid('tab'), label: t.label,
+          components: (t.components||[]).map(cloneComponent).filter(Boolean),
+        }));
+        // 사이드메뉴 섹션은 항상 일반(feature) 타입으로 가져온다 — 표지는 히어로 화면 하나뿐.
+        const newSec = { id: window.uid('sec'), label: sec.label, group: sec.group || '메뉴', kind:'feature', components: comps };
+        if(tabs.length) newSec.tabs = tabs;
+        newSections.push(newSec);
+      }
+    });
+
+    if(!newHeroComponents && !newSections.length){ setImportObj(null); return; }
+
+    commit(prev => ({
+      ...prev,
+      components,
+      heroComponents: newHeroComponents || prev.heroComponents,
+      sidebar: [...(prev.sidebar||[]), ...newSections],
+    }));
+    setActiveSectionId(newSections.length ? newSections[0].id : null);
+    setActiveTabId(null);
+    setSelectedId(null);
+    setImportObj(null);
+  };
+
   const newProject = () => {
     if(!confirm('현재 편집 중인 프로젝트를 저장 후 새 프로젝트를 시작하시겠어요?\n(현재 프로젝트는 브라우저에 남지 않습니다. 필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
     setShowGallery(true);
@@ -2894,6 +3336,15 @@ function App(){
     }));
   };
 
+  // Updates comp.style (e.g. gapAfter — the spacing below this component).
+  // silent=true skips pushing to undo history, used for the live drag preview.
+  const handleUpdateStyle = (id, patch, options={}) => {
+    commit(prev => ({
+      ...prev,
+      components: { ...prev.components, [id]: { ...prev.components[id], style: { ...(prev.components[id]?.style||{}), ...patch } } }
+    }), options);
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -2903,7 +3354,9 @@ function App(){
   };
 
   const handleAddComponent = (type, position='end') => {
-    if(activeSectionId !== null){
+    if(activeSectionId === null){
+      if(type !== 'hero') return; // 표지 화면은 히어로 컴포넌트만 허용
+    } else {
       const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
       if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
     }
@@ -3012,7 +3465,9 @@ function App(){
 
   const handleReorder = ({ action, sourceId, targetId, position, type }) => {
     if(action === 'insert-new'){
-      if(activeSectionId !== null){
+      if(activeSectionId === null){
+        if(type !== 'hero') return; // 표지 화면은 히어로 컴포넌트만 허용
+      } else {
         const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
         if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
       }
@@ -3136,7 +3591,7 @@ function App(){
         onTitleChange={(v)=>commit(prev=>({...prev, meta:{...prev.meta, title:v}}))}
         onSave={handleSave}
         onDownload={handleDownload}
-        onLoadJson={loadJson}
+        onImportJson={handleImportFileLoaded}
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
         onGoHome={goHome}
@@ -3174,6 +3629,7 @@ function App(){
             onSelect={setSelectedId}
             onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
+            onUpdateStyle={handleUpdateStyle}
             onReorder={handleReorder}
             onContextMenu={handleContextMenu}
             targetSection={activeSectionId}
@@ -3185,7 +3641,11 @@ function App(){
           <window.PropertyPanel
             state={state}
             selectedId={selectedId}
+            activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
+            onSelect={setSelectedId}
             onUpdateComp={handleUpdateComp}
+            onUpdateStyle={handleUpdateStyle}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}
@@ -3209,6 +3669,15 @@ function App(){
 
       {showPreview && (
         <window.PreviewModal state={state} onClose={()=>setShowPreview(false)}/>
+      )}
+
+      {importObj && (
+        <window.ImportModal
+          source={importObj}
+          onCancel={handleImportCancel}
+          onReplace={handleImportReplace}
+          onImport={handleImportPages}
+        />
       )}
     </div>
   );

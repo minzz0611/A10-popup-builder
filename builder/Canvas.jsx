@@ -22,7 +22,6 @@ function CompFrame({ comp, selected, onSelect, onContextMenu, isDragOver, dragOv
         outlineOffset: 2,
         transition:'outline .12s',
         cursor: 'grab',
-        marginBottom: 6,
       }}
     >
       {/* Drop indicator */}
@@ -48,10 +47,65 @@ function CompFrame({ comp, selected, onSelect, onContextMenu, isDragOver, dragOv
   );
 }
 
+// ------- Figma-style spacing handle between two components -------
+// Renders as an empty spacer the height of the gap; hovering/dragging
+// reveals a draggable guide so the gap between component A and B can be
+// adjusted directly on the canvas.
+const GAP_MIN = 0, GAP_MAX = 120;
+function GapHandle({ gap, onChange }){
+  const draggingRef = cUseRef(false);
+  const [liveGap, setLiveGap] = cUseState(null);
+  const [hover, setHover] = cUseState(false);
+  const value = liveGap != null ? liveGap : gap;
+
+  const handleDown = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const startY = e.clientY;
+    const startGap = gap;
+    document.body.style.cursor = 'ns-resize';
+    const onMove = (ev) => {
+      if(!draggingRef.current) return;
+      setLiveGap(Math.max(GAP_MIN, Math.min(GAP_MAX, startGap + (ev.clientY - startY))));
+    };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        const g = Math.max(GAP_MIN, Math.min(GAP_MAX, startGap + (ev.clientY - startY)));
+        onChange(g);
+        setLiveGap(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const active = hover || liveGap != null;
+  return (
+    <div
+      onClick={(e)=>e.stopPropagation()}
+      onMouseEnter={()=>setHover(true)}
+      onMouseLeave={()=>setHover(false)}
+      onMouseDown={handleDown}
+      style={{ position:'relative', height: Math.max(value, 10), cursor:'ns-resize' }}
+    >
+      {active && (
+        <>
+          <div style={{position:'absolute',left:0,right:0,top:'50%',height:2,background:'var(--blue)',opacity:.55,transform:'translateY(-1px)'}}/>
+          <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',background:'var(--blue)',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,whiteSpace:'nowrap',boxShadow:'0 2px 6px rgba(0,0,0,.25)',zIndex:6}}>{value}px</div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ============================================================
 // Canvas
 // ============================================================
-function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onReorder, onContextMenu, targetSection, previewOnly }){
+function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onUpdateStyle, onReorder, onContextMenu, targetSection, previewOnly }){
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
@@ -60,11 +114,35 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
 
   // Current list of components based on active section (and sub-tab, if any)
-  const componentList = activeSectionId === null
-    ? (state.heroComponents || [])
-    : (activeTab ? activeTab.components : (activeSec?.components || []));
+  const componentList = window.getComponentList(state, activeSectionId, activeTabId);
 
   const editing = !previewOnly;
+
+  // Renders the component list with a Figma-style, draggable spacing
+  // handle between each pair — the single place both screens pull from.
+  const renderComponentList = () => {
+    const out = [];
+    componentList.forEach((cid, idx) => {
+      const c = state.components[cid];
+      if(!c) return;
+      const R = window.RENDERERS[c.type];
+      out.push(
+        <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
+          isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
+          onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
+          <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
+        </CompFrame>
+      );
+      if(idx < componentList.length - 1){
+        const gap = c.style?.gapAfter ?? 6;
+        out.push(editing
+          ? <GapHandle key={cid+'-gap'} gap={gap} onChange={(g)=>onUpdateStyle && onUpdateStyle(cid, { gapAfter: g })}/>
+          : <div key={cid+'-gap'} style={{height:gap}}/>
+        );
+      }
+    });
+    return out;
+  };
 
   const handleDragStart = (e, id) => {
     draggingCompId.current = id;
@@ -128,7 +206,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
         <div style={{maxWidth:900, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
-            🏠 히어로 화면 (팝업 첫 진입 시 표시)
+            🏠 표지 (팝업 첫 진입 시 표시)
           </div>
           <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative'}}
             onClick={()=>onSelect(null)}
@@ -139,23 +217,12 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             <div style={{padding:'12px 14px'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
-                  <div style={{fontSize:32, marginBottom:12}}>📥</div>
-                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>여기에 컴포넌트를 드래그하세요</div>
-                  <div style={{fontSize:12}}>또는 좌측 팔레트에서 클릭하여 추가할 수 있습니다.</div>
+                  <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
+                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>표지는 히어로 컴포넌트로 채워집니다</div>
+                  <div style={{fontSize:12}}>좌측 팔레트에서 히어로 컴포넌트를 클릭해 추가하세요.</div>
                 </div>
               )}
-              {componentList.map(cid => {
-                const c = state.components[cid];
-                if(!c) return null;
-                const R = window.RENDERERS[c.type];
-                return (
-                  <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
-                    isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-                    <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
-                  </CompFrame>
-                );
-              })}
+              {renderComponentList()}
             </div>
             {/* Footer preview */}
             <PopupFooter state={state}/>
@@ -207,18 +274,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                   </div>
                 </div>
               )}
-              {componentList.map(cid => {
-                const c = state.components[cid];
-                if(!c) return null;
-                const R = window.RENDERERS[c.type];
-                return (
-                  <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
-                    isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
-                    onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-                    <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
-                  </CompFrame>
-                );
-              })}
+              {renderComponentList()}
             </div>
           </div>
           <PopupFooter state={state}/>

@@ -192,6 +192,79 @@ function ArrayEditor({ items, onChange, itemLabel = '항목', renderItem, defaul
 // ============================================================
 // Per-component editor dispatch
 // ============================================================
+// ------- Image crop editor: preview via canvas, bakes the crop into a new
+// data URL only when "적용" is pressed. Always crops from the original
+// upload (image.originalSrc) so re-cropping never compounds quality loss
+// and areas cropped away earlier can be brought back. -------
+function ImageCropEditor({ image, onApply, onReset }){
+  const [inset, setInset] = pUseState(image.cropInset || {top:0,right:0,bottom:0,left:0});
+  const canvasRef = React.useRef(null);
+  const imgElRef = React.useRef(null);
+  const sourceSrc = image.originalSrc || image.src;
+
+  const draw = () => {
+    const img = imgElRef.current;
+    const canvas = canvasRef.current;
+    if(!img || !canvas || !img.naturalWidth) return;
+    const { top, right, bottom, left } = inset;
+    const sx = img.naturalWidth * (left/100);
+    const sy = img.naturalHeight * (top/100);
+    const sw = Math.max(1, img.naturalWidth * (1 - (left+right)/100));
+    const sh = Math.max(1, img.naturalHeight * (1 - (top+bottom)/100));
+    canvas.width = sw; canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,sw,sh);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  };
+
+  React.useEffect(() => {
+    const img = new window.Image();
+    img.onload = () => { imgElRef.current = img; draw(); };
+    img.src = sourceSrc;
+    // eslint-disable-next-line
+  }, [sourceSrc]);
+
+  React.useEffect(() => { draw(); }, [inset]);
+
+  const setPart = (k, v) => {
+    setInset(prev => {
+      const next = { ...prev, [k]: v };
+      if(next.left + next.right > 90){ if(k==='left') next.right = 90-next.left; else next.left = 90-next.right; }
+      if(next.top + next.bottom > 90){ if(k==='top') next.bottom = 90-next.top; else next.top = 90-next.bottom; }
+      return next;
+    });
+  };
+
+  const slider = (label, key) => (
+    <div>
+      <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:3}}>{label} {inset[key]}%</div>
+      <input type="range" min={0} max={80} value={inset[key]} onChange={(e)=>setPart(key, Number(e.target.value))} style={{width:'100%'}}/>
+    </div>
+  );
+
+  return (
+    <Field label="자르기" hint="미리보기를 조절한 뒤 '자르기 적용'을 눌러야 반영됩니다.">
+      <div style={{border:'1px solid var(--line)',borderRadius:8,padding:10,background:'#FAFBFC'}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:10,background:'#EAECEF',borderRadius:6,overflow:'hidden',padding:4}}>
+          <canvas ref={canvasRef} style={{maxWidth:'100%',maxHeight:180,display:'block'}}/>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+          {slider('위쪽','top')}
+          {slider('아래쪽','bottom')}
+          {slider('왼쪽','left')}
+          {slider('오른쪽','right')}
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>{ const c = canvasRef.current; if(c) onApply(c.toDataURL('image/png'), inset); }}
+            style={{flex:1,padding:'7px 8px',border:'none',background:'var(--grad)',color:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,cursor:'pointer'}}>자르기 적용</button>
+          <button onClick={()=>{ setInset({top:0,right:0,bottom:0,left:0}); onReset(); }}
+            style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer'}}>원본으로 초기화</button>
+        </div>
+      </div>
+    </Field>
+  );
+}
+
 function CompEditor({ comp, onChange }){
   const t = comp.type;
   const d = comp.data;
@@ -206,6 +279,10 @@ function CompEditor({ comp, onChange }){
         <Field label="본문"><TextInput value={d.body} onChange={(v)=>set('body',v)} multiline rows={3}/></Field>
         <Field label="CTA 버튼 라벨"><TextInput value={d.ctaLabel} onChange={(v)=>set('ctaLabel',v)}/></Field>
         <Field label=" "><Toggle value={d.showCta!==false} onChange={(v)=>set('showCta',v)} label="CTA 버튼 표시"/></Field>
+        <Field label=" "><Toggle value={!!d.showVideoBtn} onChange={(v)=>set('showVideoBtn',v)} label="동영상 버튼 표시"/></Field>
+        {d.showVideoBtn && (
+          <Field label="동영상 버튼 라벨"><TextInput value={d.videoBtnLabel} onChange={(v)=>set('videoBtnLabel',v)}/></Field>
+        )}
         <Field label=" "><Toggle value={d.showImage!==false} onChange={(v)=>set('showImage',v)} label="이미지 표시"/></Field>
         {d.showImage!==false && (
           <Field label="히어로 이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
@@ -409,11 +486,11 @@ function CompEditor({ comp, onChange }){
   if(t === 'image'){
     return (
       <div>
-        <Field label="이미지" hint="캔버스에서 직접 클릭해서도 업로드할 수 있습니다.">
+        <Field label="이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
           {d.src ? (
             <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1px solid var(--line)'}}>
               <img src={d.src} style={{width:'100%',display:'block'}}/>
-              <button onClick={()=>set('src','')}
+              <button onClick={()=>onChange({...d, src:'', originalSrc:'', cropInset:{top:0,right:0,bottom:0,left:0}})}
                 style={{position:'absolute',right:6,top:6,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'4px 8px',borderRadius:5,cursor:'pointer',fontSize:11}}>삭제</button>
             </div>
           ) : (
@@ -421,13 +498,41 @@ function CompEditor({ comp, onChange }){
               📁 이미지 업로드
               <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{
                 const f = e.target.files && e.target.files[0]; if(!f) return;
-                const rd = new FileReader(); rd.onload = () => onChange({ ...d, src:rd.result, alt:f.name }); rd.readAsDataURL(f);
+                const rd = new FileReader(); rd.onload = () => onChange({ ...d, src:rd.result, originalSrc:rd.result, alt:f.name, cropInset:{top:0,right:0,bottom:0,left:0} }); rd.readAsDataURL(f);
               }}/>
             </label>
           )}
         </Field>
+
+        {d.src && (
+          <>
+            <Field label=" "><Toggle value={!!d.freeAspect} onChange={(v)=>set('freeAspect',v)} label="비율에 맞지 않게 수정"/></Field>
+
+            {!d.freeAspect ? (
+              <Field label={`너비 (${d.width ? d.width+'px' : '전체 너비'})`} hint="원본 이미지의 가로·세로 비율이 그대로 유지됩니다.">
+                <input type="range" min={120} max={900} step={10}
+                  value={d.width || 640}
+                  onChange={(e)=>set('width', Number(e.target.value))}
+                  style={{width:'100%'}}/>
+              </Field>
+            ) : (
+              <>
+                <Field label={`너비 (${d.width||640}px)`} hint="비율을 무시하고 가로·세로를 각각 지정합니다.">
+                  <input type="range" min={120} max={900} step={10} value={d.width||640} onChange={(e)=>set('width',Number(e.target.value))} style={{width:'100%'}}/>
+                </Field>
+                <Field label={`높이 (${d.height||240}px)`}>
+                  <input type="range" min={60} max={700} step={10} value={d.height||240} onChange={(e)=>set('height',Number(e.target.value))} style={{width:'100%'}}/>
+                </Field>
+              </>
+            )}
+
+            <ImageCropEditor image={d}
+              onApply={(newSrc, cropInset)=>onChange({...d, src:newSrc, cropInset})}
+              onReset={()=>onChange({...d, src:d.originalSrc||d.src, cropInset:{top:0,right:0,bottom:0,left:0}})}/>
+          </>
+        )}
+
         <Field label="캡션 (선택)"><TextInput value={d.caption} onChange={(v)=>set('caption',v)} multiline rows={2}/></Field>
-        <Field label="높이 (px)"><NumberInput value={d.height||240} onChange={(v)=>set('height',v)} min={80} max={800} step={20}/></Field>
       </div>
     );
   }
@@ -514,72 +619,112 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, onUpdateComp, onProjectUpdate, onDelete, onDuplicate }){
-  if(!selectedId){
-    // No selection → show popup / project meta
-    return (
-      <div style={{padding:'18px 18px'}}>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:12}}>팝업 설정</div>
-        <Field label="프로젝트 제목">
-          <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
-        </Field>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'22px 0 12px'}}>푸터</div>
-        <Field label="이용 링크 (콤마 구분)">
-          <TextInput value={(state.popup.footer.links||[]).join(', ')} onChange={(v)=>onProjectUpdate({ popup:{ ...state.popup, footer:{ ...state.popup.footer, links: v.split(',').map(x=>x.trim()).filter(Boolean)}}})}/>
-        </Field>
-        <Field label="고객센터 전화번호">
-          <TextInput value={state.popup.footer.phone} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, phone:v}}})}/>
-        </Field>
-        <Field label="URL">
-          <TextInput value={state.popup.footer.url} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, url:v}}})}/>
-        </Field>
-        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'22px 0 12px'}}>옵션</div>
-        <Field label=" ">
-          <Toggle value={state.popup.dontShowOption} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, dontShowOption:v}})} label="'다시 보지 않기' 체크박스 표시"/>
-        </Field>
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate }){
+  const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
-        <div style={{marginTop:24,padding:'14px 14px',background:'var(--grad-soft)',borderRadius:10,fontSize:12,color:'var(--blue-dark)',lineHeight:1.6}}>
-          <b>💡 편집 팁</b>
-          <div style={{marginTop:6, color:'#3B4250'}}>
-            • 캔버스의 요소를 <b>클릭</b>하면 이 패널에서 편집할 수 있습니다.<br/>
-            • <b>더블클릭</b>으로 텍스트를 바로 편집합니다.<br/>
-            • <b>드래그</b>로 요소 위치를 변경합니다.<br/>
-            • <b>우클릭</b>으로 복제/삭제 메뉴를 엽니다.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const comp = state.components[selectedId];
-  if(!comp) return null;
-  const meta = window.COMPONENT_META.find(m => m.type === comp.type);
+  const componentList = window.getComponentList(state, activeSectionId, activeTabId);
+  const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s => s.id === activeSectionId);
+  const activeTab = activeSec?.tabs?.find(t => t.id === activeTabId) || null;
+  const screenLabel = activeSectionId === null
+    ? '🏠 표지'
+    : `${activeSec?.kind === 'cover' ? '🖼️' : '📄'} ${activeSec?.label || ''}${activeTab ? ` · ${activeTab.label}` : ''}`;
 
   return (
-    <div style={{padding:'18px 18px',display:'flex',flexDirection:'column',height:'100%'}}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16,paddingBottom:14,borderBottom:'1px solid var(--line)'}}>
-        <div style={{width:34,height:34,borderRadius:8,background:'var(--grad)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          {window.Icons[meta?.icon || 'Grid']({size:18})}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:800,color:'var(--ink)'}}>{meta?.label || comp.type}</div>
-          <div style={{fontSize:11,color:'var(--mute)'}}>선택된 컴포넌트 편집</div>
-        </div>
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+      {/* 현재 화면에서 사용 중인 컴포넌트 목록 (화면상 위치 순서) */}
+      <div style={{flex:'none',padding:'16px 16px 10px',borderBottom:'1px solid var(--line)'}}>
+        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:5}}>컴포넌트 목록</div>
+        <div style={{fontSize:13,fontWeight:800,color:'var(--ink)'}}>{screenLabel}</div>
+        <div style={{fontSize:11,color:'var(--mute)',marginTop:3,lineHeight:1.5}}>화면에 보이는 순서대로 표시됩니다. 클릭하면 아래에 상세 내용이 열려요.</div>
       </div>
 
-      <div style={{flex:1, minHeight:0, overflowY:'auto', paddingRight:4, marginRight:-4}}>
-        <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+      <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'10px'}}>
+        {componentList.length === 0 && (
+          <div style={{padding:'28px 12px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6}}>
+            아직 추가된 컴포넌트가 없어요.<br/>좌측 팔레트에서 추가해 보세요.
+          </div>
+        )}
+        {componentList.map((cid, idx) => {
+          const comp = state.components[cid];
+          if(!comp) return null;
+          const meta = window.COMPONENT_META.find(m => m.type === comp.type);
+          const expanded = selectedId === cid;
+          const isLast = idx === componentList.length - 1;
+          return (
+            <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
+              <button onClick={()=>onSelect(expanded ? null : cid)}
+                style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'10px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left'}}>
+                <span style={{flex:'none',fontSize:11,color:'var(--mute)',fontWeight:700,width:14,textAlign:'center'}}>{idx+1}</span>
+                <div style={{flex:'none',width:26,height:26,borderRadius:7,background: expanded ? 'var(--grad)' : 'var(--panel)',color: expanded ? '#fff':'var(--blue-dark)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {window.Icons[meta?.icon || 'Grid']({size:14})}
+                </div>
+                <span style={{flex:1,minWidth:0,fontSize:12.5,fontWeight:700,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{meta?.label || comp.type}</span>
+                <span style={{flex:'none',fontSize:13,color:'var(--mute)',transform: expanded ? 'rotate(90deg)':'none',transition:'transform .15s'}}>›</span>
+              </button>
+
+              {expanded && (
+                <div style={{padding:'2px 12px 14px',borderTop:'1px solid var(--line)'}}>
+                  <div style={{paddingTop:12}}>
+                    <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+                  </div>
+
+                  {!isLast && (
+                    <Field label="다음 컴포넌트와의 간격" hint="캔버스에서 컴포넌트 사이를 직접 드래그해도 조절할 수 있어요.">
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <input type="range" min={0} max={120} step={2}
+                          value={comp.style?.gapAfter ?? 6}
+                          onChange={(e)=>onUpdateStyle && onUpdateStyle(comp.id, { gapAfter:Number(e.target.value) })}
+                          style={{flex:1}}/>
+                        <span style={{flex:'none',fontSize:12,color:'var(--sub)',fontWeight:700,width:42,textAlign:'right'}}>{comp.style?.gapAfter ?? 6}px</span>
+                      </div>
+                    </Field>
+                  )}
+
+                  <div style={{display:'flex',gap:6,paddingTop:10,borderTop:'1px solid var(--line)',marginTop:6}}>
+                    <button onClick={()=>onDuplicate(comp.id)}
+                      style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                      {window.Icons.Copy({size:12})} 복제
+                    </button>
+                    <button onClick={()=>onDelete(comp.id)}
+                      style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                      {window.Icons.Trash({size:12})} 삭제
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{display:'flex',gap:6,paddingTop:14,borderTop:'1px solid var(--line)',marginTop:10}}>
-        <button onClick={()=>onDuplicate(comp.id)}
-          style={{flex:1,padding:'8px 10px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:12,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {window.Icons.Copy({size:13})} 복제
+      {/* 팝업 전체 설정 - 접이식, 목록 아래에 위치 */}
+      <div style={{flex:'none',borderTop:'1px solid var(--line)'}}>
+        <button onClick={()=>setShowPopupSettings(v=>!v)}
+          style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',border:'none',background:'transparent',cursor:'pointer'}}>
+          <span style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em'}}>팝업 설정</span>
+          <span style={{fontSize:12,color:'var(--mute)',transform: showPopupSettings ? 'rotate(90deg)':'none',transition:'transform .15s'}}>›</span>
         </button>
-        <button onClick={()=>onDelete(comp.id)}
-          style={{flex:1,padding:'8px 10px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:12,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {window.Icons.Trash({size:13})} 삭제
-        </button>
+        {showPopupSettings && (
+          <div style={{padding:'0 16px 18px',maxHeight:360,overflowY:'auto'}}>
+            <Field label="프로젝트 제목">
+              <TextInput value={state.meta.title} onChange={(v)=>onProjectUpdate({ meta:{...state.meta, title:v}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>푸터</div>
+            <Field label="이용 링크 (콤마 구분)">
+              <TextInput value={(state.popup.footer.links||[]).join(', ')} onChange={(v)=>onProjectUpdate({ popup:{ ...state.popup, footer:{ ...state.popup.footer, links: v.split(',').map(x=>x.trim()).filter(Boolean)}}})}/>
+            </Field>
+            <Field label="고객센터 전화번호">
+              <TextInput value={state.popup.footer.phone} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, phone:v}}})}/>
+            </Field>
+            <Field label="URL">
+              <TextInput value={state.popup.footer.url} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, footer:{...state.popup.footer, url:v}}})}/>
+            </Field>
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'16px 0 10px'}}>옵션</div>
+            <Field label=" ">
+              <Toggle value={state.popup.dontShowOption} onChange={(v)=>onProjectUpdate({ popup:{...state.popup, dontShowOption:v}})} label="'다시 보지 않기' 체크박스 표시"/>
+            </Field>
+          </div>
+        )}
       </div>
     </div>
   );

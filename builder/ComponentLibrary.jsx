@@ -8,6 +8,7 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
 
   const grouped = {};
   window.COMPONENT_META.forEach(m => {
+    if(m.hidden) return;
     (grouped[m.group] ||= []).push(m);
   });
 
@@ -17,7 +18,7 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
   };
 
   // ------- Target label (where a clicked/dropped component will land) -------
-  let targetLabel = '히어로 화면';
+  let targetLabel = '표지';
   const activeSec = (state.sidebar||[]).find(s => s.id === activeSectionId);
   if(activeSec){
     targetLabel = activeSec.label;
@@ -26,7 +27,8 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
       if(t) targetLabel = `${activeSec.label} · ${t.label}`;
     }
   }
-  const isCoverActive = activeSec?.kind === 'cover';
+  const isCoverActive = activeSectionId === null || activeSec?.kind === 'cover';
+  const isCoverEmpty = isCoverActive && window.getComponentList(state, activeSectionId, activeTabId).length === 0;
 
   // ------- Resizer drag handling -------
   const handleResizeStart = (e) => {
@@ -90,15 +92,25 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
           <div style={{fontSize:12.5,fontWeight:800,color:'var(--ink)',letterSpacing:'-.01em',marginBottom:5}}>컴포넌트</div>
           <div style={{fontSize:11,color:'var(--mute)',lineHeight:1.5}}>
             {isCoverActive
-              ? <>표지 섹션은 <b style={{color:'var(--blue-dark)'}}>히어로 컴포넌트</b>만 사용할 수 있습니다.</>
+              ? <>표지는 <b style={{color:'var(--blue-dark)'}}>히어로 컴포넌트</b>만 사용할 수 있습니다.</>
               : <>드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{targetLabel}</b>에 추가됩니다.</>}
           </div>
         </div>
         <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
           {isCoverActive ? (
-            <div style={{padding:'22px 14px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6,border:'1.5px dashed var(--line)',borderRadius:10}}>
-              🖼️<br/>표지 섹션에는 히어로 컴포넌트가<br/>자동으로 적용되어 있어요.<br/>다른 컴포넌트는 추가할 수 없습니다.
-            </div>
+            isCoverEmpty ? (
+              <div
+                onClick={()=>onAddComponent('hero')}
+                style={{padding:'22px 14px',textAlign:'center',color:'var(--blue-dark)',fontSize:12,fontWeight:700,lineHeight:1.6,border:'1.5px dashed var(--blue)',background:'var(--grad-soft)',borderRadius:10,cursor:'pointer'}}
+              >
+                🖼️<br/>히어로 컴포넌트 추가
+                <div style={{fontSize:11,color:'var(--mute)',fontWeight:500,marginTop:4}}>클릭하면 표지에 히어로 컴포넌트가 채워집니다.</div>
+              </div>
+            ) : (
+              <div style={{padding:'22px 14px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6,border:'1.5px dashed var(--line)',borderRadius:10}}>
+                🖼️<br/>표지에는 히어로 컴포넌트가<br/>자동으로 적용되어 있어요.<br/>다른 컴포넌트는 추가할 수 없습니다.
+              </div>
+            )
           ) : Object.keys(grouped).map(g => (
             <div key={g} style={{marginBottom:14}}>
               <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'0 4px 6px'}}>{g}</div>
@@ -149,7 +161,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
     <button key="hero" onClick={()=>onSelectSection(null)}
       style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:8,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
       <span>🏠</span>
-      <span style={{flex:1}}>히어로 화면</span>
+      <span style={{flex:1}}>표지</span>
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
@@ -259,27 +271,11 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       activeSectionId: id,
     });
   };
-  const addCoverSection = () => {
-    const id = window.uid('sec');
-    const heroId = window.uid('c');
-    const num = (state.sidebar||[]).length + 1;
-    onProjectUpdate({
-      components: { ...state.components, [heroId]: { id:heroId, type:'hero', data: window.DEFAULT_DATA.hero(), style:{spanCols:12} } },
-      sidebar: [...(state.sidebar||[]), { id, label:`표지 ${num}`, group:'메뉴', kind:'cover', components: [heroId] }],
-      activeSectionId: id,
-    });
-  };
   rows.push(
-    <div key="addsec" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:6}}>
-      <button onClick={addCoverSection}
-        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--purple)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
-        + 표지 추가
-      </button>
-      <button onClick={addFeatureSection}
-        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
-        + 기능 소개 추가
-      </button>
-    </div>
+    <button key="addsec" onClick={addFeatureSection}
+      style={{width:'100%',padding:'8px',marginTop:6,border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+      + 섹션 추가
+    </button>
   );
 
   return <div>{rows}</div>;

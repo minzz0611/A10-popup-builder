@@ -64,7 +64,7 @@ function renderComponentsToHTML(components, order){
           {order.map(cid => {
             const c = components[cid]; if(!c) return null;
             const R = window.RENDERERS[c.type];
-            return <div key={cid} data-comp-type={c.type} style={{marginBottom:6}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
+            return <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 6}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
           })}
         </div>
       </React.StrictMode>

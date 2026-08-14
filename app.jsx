@@ -15,6 +15,7 @@ function App(){
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
+  const [importObj, setImportObj] = useState(null); // parsed JSON awaiting 전체교체/선택가져오기 결정
   const history = useRef({ past:[], future:[] });
 
   // ------- Boot: load from localStorage or show gallery -------
@@ -103,6 +104,76 @@ function App(){
     setShowGallery(false);
   };
 
+  // Toolbar's "JSON 불러오기" (used while a project is already open) — don't
+  // replace immediately; open a picker so the person can choose 전체 교체
+  // vs 선택한 페이지만 가져오기.
+  const handleImportFileLoaded = (obj) => {
+    if(!obj || !obj.components || !obj.meta){ alert('올바르지 않은 편집상태 파일입니다.'); return; }
+    setImportObj(obj);
+  };
+
+  const handleImportReplace = () => {
+    if(importObj) loadJson(importObj);
+    setImportObj(null);
+  };
+
+  const handleImportCancel = () => setImportObj(null);
+
+  // Copies the selected pages (표지/섹션, with their components and tabs)
+  // from the loaded JSON into the current project, generating fresh ids so
+  // nothing collides with what's already here. Existing sections are kept;
+  // 표지(히어로 화면)는 하나뿐이므로 선택 시 현재 표지를 가져온 내용으로 교체한다.
+  const handleImportPages = (selectedKeys) => {
+    const source = importObj;
+    if(!source || !state || !selectedKeys.length) return;
+
+    const idMap = {};
+    const components = { ...state.components };
+    const cloneComponent = (cid) => {
+      const orig = source.components?.[cid];
+      if(!orig) return null;
+      if(idMap[cid]) return idMap[cid];
+      const newId = window.uid('c');
+      idMap[cid] = newId;
+      components[newId] = { ...window.deepClone(orig), id:newId };
+      return newId;
+    };
+
+    let newHeroComponents = null;
+    const newSections = [];
+    selectedKeys.forEach(key => {
+      if(key === 'hero'){
+        const heroIds = (source.heroComponents||[]).map(cloneComponent).filter(Boolean);
+        if(heroIds.length) newHeroComponents = heroIds;
+      } else if(key.startsWith('sec:')){
+        const sec = (source.sidebar||[]).find(s => s.id === key.slice(4));
+        if(!sec) return;
+        const comps = (sec.components||[]).map(cloneComponent).filter(Boolean);
+        const tabs = (sec.tabs||[]).map(t => ({
+          id: window.uid('tab'), label: t.label,
+          components: (t.components||[]).map(cloneComponent).filter(Boolean),
+        }));
+        // 사이드메뉴 섹션은 항상 일반(feature) 타입으로 가져온다 — 표지는 히어로 화면 하나뿐.
+        const newSec = { id: window.uid('sec'), label: sec.label, group: sec.group || '메뉴', kind:'feature', components: comps };
+        if(tabs.length) newSec.tabs = tabs;
+        newSections.push(newSec);
+      }
+    });
+
+    if(!newHeroComponents && !newSections.length){ setImportObj(null); return; }
+
+    commit(prev => ({
+      ...prev,
+      components,
+      heroComponents: newHeroComponents || prev.heroComponents,
+      sidebar: [...(prev.sidebar||[]), ...newSections],
+    }));
+    setActiveSectionId(newSections.length ? newSections[0].id : null);
+    setActiveTabId(null);
+    setSelectedId(null);
+    setImportObj(null);
+  };
+
   const newProject = () => {
     if(!confirm('현재 편집 중인 프로젝트를 저장 후 새 프로젝트를 시작하시겠어요?\n(현재 프로젝트는 브라우저에 남지 않습니다. 필요하면 먼저 ZIP 다운로드를 진행하세요.)')) return;
     setShowGallery(true);
@@ -171,6 +242,15 @@ function App(){
     }));
   };
 
+  // Updates comp.style (e.g. gapAfter — the spacing below this component).
+  // silent=true skips pushing to undo history, used for the live drag preview.
+  const handleUpdateStyle = (id, patch, options={}) => {
+    commit(prev => ({
+      ...prev,
+      components: { ...prev.components, [id]: { ...prev.components[id], style: { ...(prev.components[id]?.style||{}), ...patch } } }
+    }), options);
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -180,7 +260,9 @@ function App(){
   };
 
   const handleAddComponent = (type, position='end') => {
-    if(activeSectionId !== null){
+    if(activeSectionId === null){
+      if(type !== 'hero') return; // 표지 화면은 히어로 컴포넌트만 허용
+    } else {
       const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
       if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
     }
@@ -289,7 +371,9 @@ function App(){
 
   const handleReorder = ({ action, sourceId, targetId, position, type }) => {
     if(action === 'insert-new'){
-      if(activeSectionId !== null){
+      if(activeSectionId === null){
+        if(type !== 'hero') return; // 표지 화면은 히어로 컴포넌트만 허용
+      } else {
         const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
         if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
       }
@@ -413,7 +497,7 @@ function App(){
         onTitleChange={(v)=>commit(prev=>({...prev, meta:{...prev.meta, title:v}}))}
         onSave={handleSave}
         onDownload={handleDownload}
-        onLoadJson={loadJson}
+        onImportJson={handleImportFileLoaded}
         onOpenPreview={()=>setShowPreview(true)}
         onNewProject={newProject}
         onGoHome={goHome}
@@ -451,6 +535,7 @@ function App(){
             onSelect={setSelectedId}
             onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
+            onUpdateStyle={handleUpdateStyle}
             onReorder={handleReorder}
             onContextMenu={handleContextMenu}
             targetSection={activeSectionId}
@@ -462,7 +547,11 @@ function App(){
           <window.PropertyPanel
             state={state}
             selectedId={selectedId}
+            activeSectionId={activeSectionId}
+            activeTabId={activeTabId}
+            onSelect={setSelectedId}
             onUpdateComp={handleUpdateComp}
+            onUpdateStyle={handleUpdateStyle}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}
@@ -486,6 +575,15 @@ function App(){
 
       {showPreview && (
         <window.PreviewModal state={state} onClose={()=>setShowPreview(false)}/>
+      )}
+
+      {importObj && (
+        <window.ImportModal
+          source={importObj}
+          onCancel={handleImportCancel}
+          onReplace={handleImportReplace}
+          onImport={handleImportPages}
+        />
       )}
     </div>
   );

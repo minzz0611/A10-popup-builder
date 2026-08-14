@@ -7,6 +7,17 @@ window.deepClone = function deepClone(obj){
   return JSON.parse(JSON.stringify(obj));
 };
 
+// Returns the ordered component-id list for whichever screen is currently
+// open (hero screen, a section, or a section's sub-tab) — the same list
+// both the canvas and the right-side property panel render from.
+window.getComponentList = function getComponentList(state, activeSectionId, activeTabId){
+  if(activeSectionId === null) return state.heroComponents || [];
+  const sec = (state.sidebar||[]).find(s => s.id === activeSectionId);
+  if(!sec) return [];
+  const tab = activeTabId ? (sec.tabs||[]).find(t => t.id === activeTabId) : null;
+  return tab ? (tab.components||[]) : (sec.components || []);
+};
+
 // Icon set (inline SVG components)
 const IconSvg = ({ path, size = 16, stroke = 'currentColor', fill = 'none', sw = 2 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">

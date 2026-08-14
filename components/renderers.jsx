@@ -189,11 +189,19 @@ function HeroBlock({ data, editing, onChange }){
         style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
       <ET tag="p" value={d.body} onChange={(v)=>upd('body',v)} editing={editing} multiline
         style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,maxWidth:600,margin:'0 auto 14px'}}/>
-      {d.showCta !== false && (
+      {(d.showCta !== false || d.showVideoBtn) && (
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginTop:14}}>
-          <button style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad)',color:'#fff',border:'none',padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 18px rgba(80,90,255,.26)'}}>
-            <ET tag="span" value={d.ctaLabel} onChange={(v)=>upd('ctaLabel',v)} editing={editing}/> &nbsp;›
-          </button>
+          {d.showCta !== false && (
+            <button style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad)',color:'#fff',border:'none',padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 18px rgba(80,90,255,.26)'}}>
+              <ET tag="span" value={d.ctaLabel} onChange={(v)=>upd('ctaLabel',v)} editing={editing}/> &nbsp;›
+            </button>
+          )}
+          {d.showVideoBtn && (
+            <button style={{display:'inline-flex',alignItems:'center',gap:7,background:'#fff',color:'var(--blue-dark)',border:'1px solid var(--line)',padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:16,height:16,borderRadius:'50%',background:'var(--grad-soft)',fontSize:9}}>▶</span>
+              <ET tag="span" value={d.videoBtnLabel} onChange={(v)=>upd('videoBtnLabel',v)} editing={editing}/>
+            </button>
+          )}
         </div>
       )}
       {d.showImage !== false && (
@@ -400,11 +408,79 @@ function TableBlock({ data, editing, onChange }){
 // ============================================================
 function ImageBlock({ data, editing, onChange }){
   const d = data;
-  const h = d.height || 240;
+  const inputRef = rUseRef(null);
+  const wrapperRef = rUseRef(null);
+  const draggingRef = rUseRef(false);
+  const [live, setLive] = rUseState(null); // {width, height} while dragging
+
+  const width = live?.width ?? d.width ?? null; // null = 100% (fill container)
+  const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
+
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => onChange({ ...d, src:rd.result, originalSrc:rd.result, alt:f.name, cropInset:{top:0,right:0,bottom:0,left:0} });
+    rd.readAsDataURL(f);
+  };
+
+  // Drag the corner handle: width-only when the ratio is locked, width+height
+  // together once "비율에 맞지 않게 수정" is turned on.
+  const handleResizeStart = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const startW = rect.width, startH = rect.height;
+    document.body.style.cursor = d.freeAspect ? 'nwse-resize' : 'ew-resize';
+    const compute = (ev) => {
+      const w = Math.max(120, Math.min(900, Math.round(startW + (ev.clientX - startX))));
+      if(!d.freeAspect) return { width:w };
+      const h = Math.max(60, Math.min(700, Math.round(startH + (ev.clientY - startY))));
+      return { width:w, height:h };
+    };
+    const onMove = (ev) => { if(draggingRef.current) setLive(compute(ev)); };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        onChange({ ...d, ...compute(ev) });
+        setLive(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   return (
     <div>
-      <EImg src={d.src} editing={editing} onChange={(v)=>onChange({...d, src:v.src, alt:v.name})}
-        style={{width:'100%',height:h,borderRadius:12,overflow:'hidden'}}/>
+      {d.src ? (
+        <div ref={wrapperRef} style={{position:'relative', width: width ? width : '100%', maxWidth:'100%'}}>
+          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto'}}>
+            <img src={d.src} alt={d.alt||''} style={{
+              width:'100%',
+              height: d.freeAspect ? '100%' : 'auto',
+              objectFit: d.freeAspect ? 'fill' : undefined,
+              display:'block',
+            }}/>
+          </div>
+          {editing && (
+            <>
+              <button onClick={(e)=>{e.stopPropagation(); inputRef.current && inputRef.current.click();}}
+                style={{position:'absolute',right:8,bottom:8,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'6px 10px',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:700}}
+              >이미지 변경</button>
+              <div onMouseDown={handleResizeStart} title={d.freeAspect ? '드래그하여 가로·세로 크기 조절' : '드래그하여 너비 조절 (비율 유지)'}
+                style={{position:'absolute',right:-6,bottom:-6,width:14,height:14,borderRadius:4,background:'var(--blue)',border:'2px solid #fff',boxShadow:'0 1px 4px rgba(0,0,0,.3)',cursor: d.freeAspect ? 'nwse-resize' : 'ew-resize'}}/>
+            </>
+          )}
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+        </div>
+      ) : (
+        <EImg src="" editing={editing} onChange={(v)=>onChange({...d, src:v.src, originalSrc:v.src, alt:v.name})}
+          style={{width:'100%',height:d.height||240,borderRadius:12}}/>
+      )}
       {(d.caption || editing) && (
         <ET tag="div" value={d.caption} onChange={(v)=>onChange({...d, caption:v})} editing={editing} placeholder="이미지 설명 (선택)"
           style={{marginTop:8,fontSize:12,color:'var(--sub)',textAlign:'center',lineHeight:1.5,minHeight: editing?18:0}}/>
@@ -564,7 +640,7 @@ window.RENDERERS = {
 };
 
 window.COMPONENT_META = [
-  { type:'hero', label:'히어로 섹션', icon:'Star', group:'헤더', desc:'배지 · 제목 · CTA · 미니 대시보드' },
+  { type:'hero', label:'표지 (히어로)', icon:'Star', group:'헤더', desc:'배지 · 제목 · CTA · 이미지 · 동영상 버튼', hidden:true },
   { type:'section-heading', label:'섹션 헤딩', icon:'Heading', group:'헤더', desc:'제목과 부연 설명' },
   { type:'kpi-grid', label:'KPI 카드', icon:'Grid', group:'데이터', desc:'수치 지표 카드 그리드' },
   { type:'table', label:'표 / 테이블', icon:'Table', group:'데이터', desc:'행과 열의 데이터' },
@@ -586,6 +662,7 @@ window.DEFAULT_DATA = {
     subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
     body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
     ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
+    showVideoBtn:false, videoBtnLabel:'동영상 보기',
   }),
   'kpi-grid': () => ({ cols:3, items:[
     {label:'매출액',value:'₩482M',delta:'+12.3%'},
@@ -622,7 +699,7 @@ window.DEFAULT_DATA = {
       ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
     ],
   }),
-  'image': () => ({ src:'', alt:'', caption:'', height:240 }),
+  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0} }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
     {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},

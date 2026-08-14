@@ -1,7 +1,7 @@
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
 
@@ -81,7 +81,7 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onLoadJson, onOpenP
           const f = e.target.files && e.target.files[0]; if(!f) return;
           const rd = new FileReader();
           rd.onload = () => {
-            try { onLoadJson(JSON.parse(rd.result)); }
+            try { onImportJson(JSON.parse(rd.result)); }
             catch(err){ alert('JSON 파일을 읽을 수 없습니다: ' + err.message); }
           };
           rd.readAsText(f);
