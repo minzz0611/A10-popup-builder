@@ -49,11 +49,13 @@ function ET({ tag = 'span', value, onChange, editing, className, style, multilin
     }
   };
   // Prevent React from resetting DOM on every keystroke: use suppressContentEditableWarning
+  // white-space:pre-wrap ensures stored \n line breaks actually render as line
+  // breaks here — plain HTML tags collapse \n by default, unlike a <textarea>.
   return (
     <Tag
       ref={ref}
       className={className}
-      style={style}
+      style={{ whiteSpace:'pre-wrap', ...style }}
       contentEditable={!!editing}
       suppressContentEditableWarning
       onBlur={handleBlur}
