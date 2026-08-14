@@ -39,7 +39,7 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .nav-submenu button{padding:9px 10px;font-size:13px;gap:8px;}
 .nav-submenu button .num{flex:none;width:18px;height:18px;border-radius:50%;background:var(--line);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;}
 .nav-submenu button.active .num{background:var(--grad);color:#fff;}
-.content{flex:1;padding:18px 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
+.content{flex:1;padding:0 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
 .dont-show-bar{flex:none;padding:12px 44px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);}
@@ -133,6 +133,7 @@ async function buildFinalHtml(state){
 
   const footer = state.popup?.footer || {};
   const dontShow = state.popup?.dontShowOption !== false;
+  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -171,7 +172,7 @@ async function buildFinalHtml(state){
       <div class="screen" id="detailScreen">
         <div class="body-wrap">
           <nav class="side-nav">${sidebarHtml}</nav>
-          <div class="content">${panelsHtml}</div>
+          <div class="content"><div style="height:${topGap}px"></div>${panelsHtml}</div>
         </div>
       </div>` : ''}
 

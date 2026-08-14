@@ -105,13 +105,14 @@ function GapHandle({ gap, onChange }){
 // ============================================================
 // Canvas
 // ============================================================
-function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onUpdateStyle, onReorder, onContextMenu, targetSection, previewOnly }){
+function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onUpdateStyle, onUpdateTopGap, onReorder, onContextMenu, targetSection, previewOnly }){
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
 
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
+  const topGap = state.popup?.topGap ?? 24; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -251,10 +252,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                 onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
             </nav>
             {/* Content editable */}
-            <div style={{flex:1, padding:'18px 44px 20px', overflowY:'auto'}}
+            <div style={{flex:1, padding:'0 44px 20px', overflowY:'auto'}}
               onDragOver={handleContainerDragOver}
               onDrop={handleContainerDrop}
             >
+              {editing
+                ? <GapHandle gap={topGap} onChange={(g)=>onUpdateTopGap && onUpdateTopGap(g)}/>
+                : <div style={{height:topGap}}/>}
               {!!(activeSec?.tabs?.length) && (activeSec.navMode==='top' || activeSec.navMode==='both' || !activeSec.navMode) && (
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}} onClick={(e)=>e.stopPropagation()}>
                   {activeSec.tabs.map(t => (

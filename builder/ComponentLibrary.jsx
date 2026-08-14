@@ -153,16 +153,43 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   const renameTab = (sectionId, tabId, label) => {
     onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).map(t => t.id === tabId ? { ...t, label } : t) } : s) });
   };
-  // 섹션을 같은 목록(state.sidebar) 안에서 위/아래로 한 칸씩 이동
-  const moveSection = (id, dir) => {
+  // 섹션 드래그 리오더 — 드래그 시작한 섹션을 드롭 대상 섹션의 앞/뒤로 옮기고,
+  // 다른 그룹 위로 놓으면 그 그룹으로도 함께 이동시킨다.
+  const [dragId, setDragId] = lUseState(null);
+  const [overId, setOverId] = lUseState(null);
+  const [overPos, setOverPos] = lUseState(null); // 'before' | 'after'
+
+  const handleDragStart = (e, id) => {
+    e.stopPropagation();
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+  const handleDragOverRow = (e, id) => {
+    if(!dragId || dragId === id) return;
+    e.preventDefault(); e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientY - rect.top) < rect.height/2 ? 'before' : 'after';
+    setOverId(id); setOverPos(pos);
+  };
+  const handleDropRow = (e, id) => {
+    e.preventDefault(); e.stopPropagation();
+    const pos = overPos;
+    setDragId(null); setOverId(null); setOverPos(null);
+    if(!dragId || dragId === id) return;
     const arr = [...(state.sidebar||[])];
-    const idx = arr.findIndex(s => s.id === id);
-    if(idx < 0) return;
-    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
-    if(swapIdx < 0 || swapIdx >= arr.length) return;
-    [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
+    const fromIdx = arr.findIndex(s => s.id === dragId);
+    if(fromIdx < 0) return;
+    const [moved] = arr.splice(fromIdx, 1);
+    const targetIdx = arr.findIndex(s => s.id === id);
+    if(targetIdx < 0){ arr.push(moved); onProjectUpdate({ sidebar: arr }); return; }
+    const movedWithGroup = { ...moved, group: arr[targetIdx].group || '메뉴' };
+    arr.splice(pos === 'after' ? targetIdx + 1 : targetIdx, 0, movedWithGroup);
     onProjectUpdate({ sidebar: arr });
   };
+  const handleDragEndRow = () => { setDragId(null); setOverId(null); setOverPos(null); };
+
   // 특정 그룹(0뎁스) 바로 아래에 새 섹션(1뎁스)을 추가 — 같은 그룹의 마지막 섹션 다음 위치에 삽입
   const addSectionToGroup = (group) => {
     const sidebar = [...(state.sidebar||[])];
@@ -187,7 +214,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
-  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>사이드메뉴 섹션</div>);
+  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>목록</div>);
 
   // ------- 같은 group 값을 공유하는 섹션끼리 묶기 (0뎁스: 그룹, 1뎁스: 섹션, 2뎁스: 하위 탭) -------
   const groupOrder = [];
@@ -198,19 +225,32 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
     groupedSections[g].push(sec);
   });
 
-  const moveBtn = {...iconBtn, width:16, height:16, fontSize:9};
-
   const renderSectionRow = (sec) => {
     const active = activeSectionId === sec.id;
     const tabs = sec.tabs || [];
     const isCover = sec.kind === 'cover';
     const selectThis = () => onSelectSection(sec.id);
-    const idx = (state.sidebar||[]).findIndex(s => s.id === sec.id);
-    const canUp = idx > 0;
-    const canDown = idx >= 0 && idx < (state.sidebar||[]).length - 1;
+    const isDragging = dragId === sec.id;
+    const isOver = overId === sec.id && dragId && dragId !== sec.id;
     return (
       <div key={sec.id} style={{marginBottom:2}}>
-        <div style={{display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+        <div
+          onDragOver={(e)=>handleDragOverRow(e, sec.id)}
+          onDrop={(e)=>handleDropRow(e, sec.id)}
+          style={{position:'relative',display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none',opacity: isDragging?0.4:1}}>
+          {isOver && overPos==='before' && (
+            <div style={{position:'absolute',top:-2,left:4,right:4,height:2,background:'var(--blue)',borderRadius:2}}/>
+          )}
+          {isOver && overPos==='after' && (
+            <div style={{position:'absolute',bottom:-2,left:4,right:4,height:2,background:'var(--blue)',borderRadius:2}}/>
+          )}
+          <span
+            draggable
+            onDragStart={(e)=>handleDragStart(e, sec.id)}
+            onDragEnd={handleDragEndRow}
+            title="드래그하여 순서 변경"
+            style={{flex:'none',cursor:'grab',color:'var(--mute)',fontSize:13,padding:'0 3px',userSelect:'none',lineHeight:1}}
+          >⠿</span>
           <div style={{flex:1,minWidth:0,cursor:'pointer',display:'flex',alignItems:'center',gap:5,padding:'2px 6px'}} onClick={selectThis}>
             {isCover && (
               <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
@@ -223,17 +263,6 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
               placeholder="섹션 이름"
               style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'3px 0'}}
             />
-          </div>
-          {!tabs.length && <span style={{fontSize:11,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{sec.components.length}</span>}
-          <div style={{display:'flex',flexDirection:'column',flex:'none',gap:1}}>
-            <button title="위로 이동" disabled={!canUp} onClick={()=>moveSection(sec.id,'up')}
-              style={{...moveBtn, opacity: canUp?1:.3, cursor: canUp?'pointer':'default'}}
-              onMouseEnter={(e)=>{if(canUp) e.currentTarget.style.background='var(--panel)';}}
-              onMouseLeave={(e)=>e.currentTarget.style.background='none'}>▲</button>
-            <button title="아래로 이동" disabled={!canDown} onClick={()=>moveSection(sec.id,'down')}
-              style={{...moveBtn, opacity: canDown?1:.3, cursor: canDown?'pointer':'default'}}
-              onMouseEnter={(e)=>{if(canDown) e.currentTarget.style.background='var(--panel)';}}
-              onMouseLeave={(e)=>e.currentTarget.style.background='none'}>▼</button>
           </div>
           {!isCover && (
             <button title="하위 탭 추가" onClick={()=>onAddTab(sec.id)} style={iconBtn}

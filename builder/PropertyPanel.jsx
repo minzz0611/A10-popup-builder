@@ -675,7 +675,16 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
                           value={comp.style?.gapAfter ?? 20}
                           onChange={(e)=>onUpdateStyle && onUpdateStyle(comp.id, { gapAfter:Number(e.target.value) })}
                           style={{flex:1}}/>
-                        <span style={{flex:'none',fontSize:12,color:'var(--sub)',fontWeight:700,width:42,textAlign:'right'}}>{comp.style?.gapAfter ?? 20}px</span>
+                        <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                          <input type="number" min={0} max={120} step={1}
+                            value={comp.style?.gapAfter ?? 20}
+                            onChange={(e)=>{
+                              const v = Math.max(0, Math.min(120, Number(e.target.value) || 0));
+                              onUpdateStyle && onUpdateStyle(comp.id, { gapAfter:v });
+                            }}
+                            style={{width:44,padding:'4px 5px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,color:'var(--sub)',textAlign:'right',fontFamily:'inherit'}}/>
+                          <span style={{fontSize:12,color:'var(--sub)',fontWeight:700}}>px</span>
+                        </div>
                       </div>
                     </Field>
                   )}

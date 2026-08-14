@@ -251,6 +251,11 @@ function App(){
     }), options);
   };
 
+  // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
+  const handleUpdateTopGap = (g) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, topGap: g } }));
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -536,6 +541,7 @@ function App(){
             onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}
+            onUpdateTopGap={handleUpdateTopGap}
             onReorder={handleReorder}
             onContextMenu={handleContextMenu}
             targetSection={activeSectionId}
