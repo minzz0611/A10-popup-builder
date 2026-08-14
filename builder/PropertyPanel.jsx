@@ -854,9 +854,8 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onUpdateCustomHtml, onProjectUpdate, onDelete, onDuplicate, isProtected }){
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onUpdateCustomHtml, editorMode, onProjectUpdate, onDelete, onDuplicate, isProtected }){
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
-  const [htmlModeIds, setHtmlModeIds] = pUseState(() => new Set());
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
   const itemRefs = React.useRef({});
@@ -908,7 +907,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
               {expanded && (
                 <div style={{padding:'2px 12px 14px',borderTop:'1px solid var(--line)'}}>
                   <div style={{paddingTop:12}}>
-                    {(htmlModeIds.has(cid) || !!comp.customHtml) ? (
+                    {(editorMode === 'html' && !locked) ? (
                       <div>
                         <textarea
                           value={comp.customHtml||''}
@@ -917,28 +916,13 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
                           rows={8}
                           style={{width:'100%',padding:'8px 10px',border:'1px solid var(--line)',borderRadius:7,fontSize:11.5,fontFamily:'monospace',color:'var(--ink)',resize:'vertical',boxSizing:'border-box'}}/>
                         <div style={{fontSize:10.5,color:'var(--mute)',marginTop:5,lineHeight:1.5}}>
-                          입력한 HTML이 그대로 렌더링돼요. 이 모드에서는 위 구조화된 편집 폼 대신 이 코드가 사용돼요.
+                          비워두면 구조화된 내용이 그대로 사용되고, 입력하면 이 HTML이 대신 렌더링돼요.
                         </div>
                       </div>
                     ) : (
                       <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
                     )}
                   </div>
-
-                  {!locked && (
-                    <button type="button" onClick={()=>{
-                      const usingHtml = htmlModeIds.has(cid) || !!comp.customHtml;
-                      setHtmlModeIds(prev => {
-                        const next = new Set(prev);
-                        if(usingHtml) next.delete(cid); else next.add(cid);
-                        return next;
-                      });
-                      if(usingHtml) onUpdateCustomHtml && onUpdateCustomHtml(comp.id, '');
-                    }}
-                      style={{marginTop:10,fontSize:11,fontWeight:700,color: (htmlModeIds.has(cid)||!!comp.customHtml) ? 'var(--danger)' : 'var(--blue-dark)',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                      {(htmlModeIds.has(cid)||!!comp.customHtml) ? '구조화된 편집으로 돌아가기' : '</> HTML 코드로 직접 편집'}
-                    </button>
-                  )}
 
                   {!isLast && (
                     <Field label="다음 컴포넌트와의 간격" hint="캔버스에서 컴포넌트 사이를 직접 드래그해도 조절할 수 있어요.">

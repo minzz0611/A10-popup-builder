@@ -209,14 +209,14 @@ function HeroBlock({ data, editing, onChange }){
   const upd = (k, v) => onChange({ ...d, [k]: v });
   return (
     <section style={{padding:'30px 56px 22px', textAlign:'center', background:'radial-gradient(700px 260px at 50% -60px, #eef1ff 0%, rgba(255,255,255,0) 70%)'}}>
-      {(d.badge || editing) && (
+      {d.badge && (
         <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
           <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
         </div>
       )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
         style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
-      {(d.subtitle || editing) && (
+      {d.subtitle && (
         <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
           style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
       )}
@@ -457,7 +457,7 @@ function ImageBlock({ data, editing, onChange }){
   const emphasisOn = !!d.emphasis?.enabled;
   const borderOn = !!d.border?.enabled;
   const baseBorderWidth = Math.max(1, Math.min(2, d.border?.width || 1));
-  const baseBorderColor = d.border?.color || '#D9D9D9';
+  const baseBorderColor = d.border?.color || '#E2E2E2';
   const emphasisColor = d.emphasis?.color || '#1C90FB';
   let frameExtra = {};
   if(emphasisOn){
@@ -537,7 +537,7 @@ function ImageBlock({ data, editing, onChange }){
         <EImg src="" editing={editing} onChange={(v)=>onChange({...d, src:v.src, originalSrc:v.src, alt:v.name})}
           style={{width:'100%',height:d.height||240,borderRadius:12}}/>
       )}
-      {(d.caption || editing) && (
+      {d.caption && (
         <ET tag="div" value={d.caption} onChange={(v)=>onChange({...d, caption:v})} editing={editing} placeholder="이미지 설명 (선택)"
           style={{marginTop:8,fontSize:12,color:'var(--sub)',textAlign:'center',lineHeight:1.5,minHeight: editing?18:0}}/>
       )}
@@ -561,7 +561,7 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
           <div style={{background:'#161B26',height:150,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
-            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: (it.tag || editing) ? 'inline-block' : 'none'}}>
+            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
               <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
             </span>
             <div style={{width:52,height:52,borderRadius:'50%',background:'var(--grad)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:16,boxShadow:'0 8px 20px rgba(80,90,255,.4)'}}>▶</div>
@@ -661,7 +661,7 @@ function SectionHeading({ data, editing, onChange }){
     <div>
       <ET tag="h3" value={d.title} onChange={(v)=>onChange({...d, title:v})} editing={editing}
         style={{fontSize:18,margin:'0 0 4px',color:'var(--ink)'}}/>
-      {(d.desc || editing) && (
+      {d.desc && (
         <ET tag="p" value={d.desc} onChange={(v)=>onChange({...d, desc:v})} editing={editing} multiline
           style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,margin:'0 0 4px'}}/>
       )}
@@ -806,7 +806,7 @@ window.DEFAULT_DATA = {
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#D9D9D9', width:1 },
+    border:{ enabled:false, color:'#E2E2E2', width:1 },
     emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},

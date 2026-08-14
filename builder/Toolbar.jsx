@@ -1,7 +1,7 @@
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
@@ -126,6 +126,19 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
               </div>
             </>
           )}
+        </div>
+
+        <div style={{display:'flex',background:'var(--panel)',borderRadius:8,padding:2,gap:2}} title="우측 패널 전체를 구조화된 폼으로 편집할지, HTML 코드로 직접 편집할지 선택">
+          <button onClick={()=>onSetEditorMode('simple')} type="button"
+            style={{padding:'6px 10px',fontSize:12,fontWeight:700,borderRadius:6,border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+              background: editorMode!=='html' ? '#fff' : 'transparent',color: editorMode!=='html' ? 'var(--ink)' : 'var(--sub)',boxShadow: editorMode!=='html' ? '0 1px 3px rgba(20,30,60,.1)' : 'none'}}>
+            🧩 간단 모드
+          </button>
+          <button onClick={()=>onSetEditorMode('html')} type="button"
+            style={{padding:'6px 10px',fontSize:12,fontWeight:700,borderRadius:6,border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+              background: editorMode==='html' ? '#fff' : 'transparent',color: editorMode==='html' ? 'var(--ink)' : 'var(--sub)',boxShadow: editorMode==='html' ? '0 1px 3px rgba(20,30,60,.1)' : 'none'}}>
+            {'</>'} HTML 모드
+          </button>
         </div>
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 

@@ -470,14 +470,14 @@ function HeroBlock({ data, editing, onChange }){
   const upd = (k, v) => onChange({ ...d, [k]: v });
   return (
     <section style={{padding:'30px 56px 22px', textAlign:'center', background:'radial-gradient(700px 260px at 50% -60px, #eef1ff 0%, rgba(255,255,255,0) 70%)'}}>
-      {(d.badge || editing) && (
+      {d.badge && (
         <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
           <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
         </div>
       )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
         style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
-      {(d.subtitle || editing) && (
+      {d.subtitle && (
         <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
           style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
       )}
@@ -718,7 +718,7 @@ function ImageBlock({ data, editing, onChange }){
   const emphasisOn = !!d.emphasis?.enabled;
   const borderOn = !!d.border?.enabled;
   const baseBorderWidth = Math.max(1, Math.min(2, d.border?.width || 1));
-  const baseBorderColor = d.border?.color || '#D9D9D9';
+  const baseBorderColor = d.border?.color || '#E2E2E2';
   const emphasisColor = d.emphasis?.color || '#1C90FB';
   let frameExtra = {};
   if(emphasisOn){
@@ -798,7 +798,7 @@ function ImageBlock({ data, editing, onChange }){
         <EImg src="" editing={editing} onChange={(v)=>onChange({...d, src:v.src, originalSrc:v.src, alt:v.name})}
           style={{width:'100%',height:d.height||240,borderRadius:12}}/>
       )}
-      {(d.caption || editing) && (
+      {d.caption && (
         <ET tag="div" value={d.caption} onChange={(v)=>onChange({...d, caption:v})} editing={editing} placeholder="이미지 설명 (선택)"
           style={{marginTop:8,fontSize:12,color:'var(--sub)',textAlign:'center',lineHeight:1.5,minHeight: editing?18:0}}/>
       )}
@@ -822,7 +822,7 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
           <div style={{background:'#161B26',height:150,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
-            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: (it.tag || editing) ? 'inline-block' : 'none'}}>
+            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
               <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
             </span>
             <div style={{width:52,height:52,borderRadius:'50%',background:'var(--grad)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:16,boxShadow:'0 8px 20px rgba(80,90,255,.4)'}}>▶</div>
@@ -922,7 +922,7 @@ function SectionHeading({ data, editing, onChange }){
     <div>
       <ET tag="h3" value={d.title} onChange={(v)=>onChange({...d, title:v})} editing={editing}
         style={{fontSize:18,margin:'0 0 4px',color:'var(--ink)'}}/>
-      {(d.desc || editing) && (
+      {d.desc && (
         <ET tag="p" value={d.desc} onChange={(v)=>onChange({...d, desc:v})} editing={editing} multiline
           style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,margin:'0 0 4px'}}/>
       )}
@@ -1067,7 +1067,7 @@ window.DEFAULT_DATA = {
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#D9D9D9', width:1 },
+    border:{ enabled:false, color:'#E2E2E2', width:1 },
     emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
@@ -2388,9 +2388,8 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onUpdateCustomHtml, onProjectUpdate, onDelete, onDuplicate, isProtected }){
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onUpdateCustomHtml, editorMode, onProjectUpdate, onDelete, onDuplicate, isProtected }){
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
-  const [htmlModeIds, setHtmlModeIds] = pUseState(() => new Set());
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
   const itemRefs = React.useRef({});
@@ -2442,7 +2441,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
               {expanded && (
                 <div style={{padding:'2px 12px 14px',borderTop:'1px solid var(--line)'}}>
                   <div style={{paddingTop:12}}>
-                    {(htmlModeIds.has(cid) || !!comp.customHtml) ? (
+                    {(editorMode === 'html' && !locked) ? (
                       <div>
                         <textarea
                           value={comp.customHtml||''}
@@ -2451,28 +2450,13 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
                           rows={8}
                           style={{width:'100%',padding:'8px 10px',border:'1px solid var(--line)',borderRadius:7,fontSize:11.5,fontFamily:'monospace',color:'var(--ink)',resize:'vertical',boxSizing:'border-box'}}/>
                         <div style={{fontSize:10.5,color:'var(--mute)',marginTop:5,lineHeight:1.5}}>
-                          입력한 HTML이 그대로 렌더링돼요. 이 모드에서는 위 구조화된 편집 폼 대신 이 코드가 사용돼요.
+                          비워두면 구조화된 내용이 그대로 사용되고, 입력하면 이 HTML이 대신 렌더링돼요.
                         </div>
                       </div>
                     ) : (
                       <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
                     )}
                   </div>
-
-                  {!locked && (
-                    <button type="button" onClick={()=>{
-                      const usingHtml = htmlModeIds.has(cid) || !!comp.customHtml;
-                      setHtmlModeIds(prev => {
-                        const next = new Set(prev);
-                        if(usingHtml) next.delete(cid); else next.add(cid);
-                        return next;
-                      });
-                      if(usingHtml) onUpdateCustomHtml && onUpdateCustomHtml(comp.id, '');
-                    }}
-                      style={{marginTop:10,fontSize:11,fontWeight:700,color: (htmlModeIds.has(cid)||!!comp.customHtml) ? 'var(--danger)' : 'var(--blue-dark)',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                      {(htmlModeIds.has(cid)||!!comp.customHtml) ? '구조화된 편집으로 돌아가기' : '</> HTML 코드로 직접 편집'}
-                    </button>
-                  )}
 
                   {!isLast && (
                     <Field label="다음 컴포넌트와의 간격" hint="캔버스에서 컴포넌트 사이를 직접 드래그해도 조절할 수 있어요.">
@@ -3323,7 +3307,7 @@ window.PopupFooter = PopupFooter;
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
@@ -3448,6 +3432,19 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
               </div>
             </>
           )}
+        </div>
+
+        <div style={{display:'flex',background:'var(--panel)',borderRadius:8,padding:2,gap:2}} title="우측 패널 전체를 구조화된 폼으로 편집할지, HTML 코드로 직접 편집할지 선택">
+          <button onClick={()=>onSetEditorMode('simple')} type="button"
+            style={{padding:'6px 10px',fontSize:12,fontWeight:700,borderRadius:6,border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+              background: editorMode!=='html' ? '#fff' : 'transparent',color: editorMode!=='html' ? 'var(--ink)' : 'var(--sub)',boxShadow: editorMode!=='html' ? '0 1px 3px rgba(20,30,60,.1)' : 'none'}}>
+            🧩 간단 모드
+          </button>
+          <button onClick={()=>onSetEditorMode('html')} type="button"
+            style={{padding:'6px 10px',fontSize:12,fontWeight:700,borderRadius:6,border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+              background: editorMode==='html' ? '#fff' : 'transparent',color: editorMode==='html' ? 'var(--ink)' : 'var(--sub)',boxShadow: editorMode==='html' ? '0 1px 3px rgba(20,30,60,.1)' : 'none'}}>
+            {'</>'} HTML 모드
+          </button>
         </div>
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 
@@ -3756,6 +3753,7 @@ function App(){
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
+  const [editorMode, setEditorMode] = useState('simple'); // 'simple' | 'html' — 우측 패널 전체에 공통 적용
   const [importObj, setImportObj] = useState(null); // parsed JSON awaiting 전체교체/선택가져오기 결정
   const history = useRef({ past:[], future:[] });
 
@@ -4272,6 +4270,8 @@ function App(){
         onNewProject={newProject}
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
+        editorMode={editorMode}
+        onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
@@ -4326,6 +4326,7 @@ function App(){
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}
             onUpdateCustomHtml={handleUpdateCustomHtml}
+            editorMode={editorMode}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}

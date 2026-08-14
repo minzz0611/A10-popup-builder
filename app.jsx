@@ -15,6 +15,7 @@ function App(){
   const [contextMenu, setContextMenu] = useState(null); // {x,y,compId}
   const [showPreview, setShowPreview] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
+  const [editorMode, setEditorMode] = useState('simple'); // 'simple' | 'html' — 우측 패널 전체에 공통 적용
   const [importObj, setImportObj] = useState(null); // parsed JSON awaiting 전체교체/선택가져오기 결정
   const history = useRef({ past:[], future:[] });
 
@@ -531,6 +532,8 @@ function App(){
         onNewProject={newProject}
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
+        editorMode={editorMode}
+        onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
@@ -585,6 +588,7 @@ function App(){
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}
             onUpdateCustomHtml={handleUpdateCustomHtml}
+            editorMode={editorMode}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}
