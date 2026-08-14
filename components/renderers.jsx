@@ -85,16 +85,11 @@ function EImg({ src, alt, editing, onChange, className, style, placeholder = '�
 window.EImg = EImg;
 
 // ============================================================
-// 1. HERO — 배지 + 그라디언트 제목 + 서브 + 본문 + CTA + 미니 대시보드
+// 1. HERO — 배지 + 그라디언트 제목 + 서브 + 본문 + CTA + 이미지
 // ============================================================
 function HeroBlock({ data, editing, onChange }){
   const d = data;
   const upd = (k, v) => onChange({ ...d, [k]: v });
-  const updKpi = (i, k, v) => {
-    const kpis = [...(d.kpis||[])];
-    kpis[i] = { ...kpis[i], [k]: v };
-    upd('kpis', kpis);
-  };
   return (
     <section style={{padding:'30px 56px 22px', textAlign:'center', background:'radial-gradient(700px 260px at 50% -60px, #eef1ff 0%, rgba(255,255,255,0) 70%)'}}>
       <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
@@ -113,22 +108,12 @@ function HeroBlock({ data, editing, onChange }){
           </button>
         </div>
       )}
-      {d.showDash !== false && (
-        <div style={{margin:'16px auto 0',maxWidth:640,borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)',background:'#161B26',padding:18,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
-            {(d.kpis||[]).map((k,i)=>(
-              <div key={i} style={{background:'#1F2632',borderRadius:10,padding:'10px 12px',textAlign:'left'}}>
-                <ET tag="div" value={k.label} onChange={(v)=>updKpi(i,'label',v)} editing={editing} style={{color:'#8891A3',fontSize:9.5,fontWeight:700,marginBottom:4}}/>
-                <ET tag="div" value={k.value} onChange={(v)=>updKpi(i,'value',v)} editing={editing} style={{color:'#fff',fontSize:15,fontWeight:800}}/>
-              </div>
-            ))}
-            <div style={{gridColumn:'span 3',background:'#1F2632',borderRadius:10,padding:'10px 12px',textAlign:'left',color:'#8891A3',fontSize:9.5,fontWeight:700}}>
-              <ET tag="span" value={d.chartLabel||'월별 매출 추이'} onChange={(v)=>upd('chartLabel',v)} editing={editing}/>
-              <div style={{display:'flex',alignItems:'flex-end',gap:4,height:36,marginTop:8}}>
-                {[40,55,48,70,62,85,78,95].map((h,i)=>(
-                  <i key={i} style={{flex:1,background:'var(--grad)',borderRadius:'3px 3px 0 0',display:'block',height:h+'%'}}/>
-                ))}
-              </div>
-            </div>
+      {d.showImage !== false && (
+        <div style={{margin:'16px auto 0',maxWidth:640,borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
+          <EImg src={d.image?.src} alt={d.image?.alt} editing={editing}
+            onChange={(v)=>upd('image',{ src:v.src, alt:v.name })}
+            placeholder="히어로 이미지 업로드"
+            style={{width:'100%',height:280}}/>
         </div>
       )}
     </section>
@@ -517,8 +502,7 @@ window.DEFAULT_DATA = {
     badge:'Amaranth10 × ERP AI 서비스', title:'AI 분석리포트',
     subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
     body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
-    ctaLabel:'상세내용 보기', showCta:true, showDash:true, chartLabel:'월별 매출 추이',
-    kpis:[{label:'매출액 합계',value:'₩482M'},{label:'영업이익률',value:'18.4%'},{label:'자금 계좌잔액',value:'₩96M'}]
+    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'' },
   }),
   'kpi-grid': () => ({ cols:3, items:[
     {label:'매출액',value:'₩482M',delta:'+12.3%'},

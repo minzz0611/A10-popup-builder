@@ -115,7 +115,7 @@ function templateSimple(){
     badge:'서비스 안내', title:'새로운 기능이 출시되었습니다',
     subtitle:'지금 바로 확인해 보세요',
     body:'서비스 소개와 사용 방법을 안내드립니다. 팝업 내용을 자유롭게 수정하여 활용하세요.',
-    ctaLabel:'자세히 보기', showCta:true, showDash:false, kpis:[]
+    ctaLabel:'자세히 보기', showCta:true, showImage:false
   });
   const heading = makeComp('section-heading', { title:'주요 기능', desc:'제공하는 핵심 기능을 소개합니다.' });
   const features = makeComp('feature-cards', window.DEFAULT_DATA['feature-cards']());
@@ -141,7 +141,7 @@ function templateBlank(){
     badge:'NEW', title:'제목을 입력하세요',
     subtitle:'서브 타이틀',
     body:'팝업에 표시할 내용을 자유롭게 편집할 수 있습니다.',
-    ctaLabel:'상세보기', showCta:true, showDash:false, kpis:[]
+    ctaLabel:'상세보기', showCta:true, showImage:false
   });
   return {
     meta:{ title:'빈 팝업', updatedAt: Date.now() },
@@ -161,7 +161,7 @@ function templateRelease(){
     badge:'RELEASE 2026.08', title:'v2.0 업데이트',
     subtitle:'더 빨라진 성능, 새로워진 UI로 만나보세요',
     body:'이번 업데이트에서 개선된 주요 사항과 새로 추가된 기능을 안내드립니다.',
-    ctaLabel:'변경사항 보기', showCta:true, showDash:false, kpis:[]
+    ctaLabel:'변경사항 보기', showCta:true, showImage:false
   });
   const kpiHead = makeComp('section-heading', { title:'📊 이번 릴리즈 요약', desc:'주요 개선 지표' });
   const kpi = makeComp('kpi-grid', { cols:3, items:[

@@ -180,6 +180,10 @@ function App(){
   };
 
   const handleAddComponent = (type, position='end') => {
+    if(activeSectionId !== null){
+      const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
+      if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
+    }
     const newComp = {
       id: window.uid('c'),
       type,
@@ -285,6 +289,10 @@ function App(){
 
   const handleReorder = ({ action, sourceId, targetId, position, type }) => {
     if(action === 'insert-new'){
+      if(activeSectionId !== null){
+        const sec = (state?.sidebar||[]).find(s => s.id === activeSectionId);
+        if(sec?.kind === 'cover' && type !== 'hero') return; // 표지 섹션은 히어로 컴포넌트만 허용
+      }
       // insert a new component at position relative to targetId
       const newComp = {
         id: window.uid('c'), type,

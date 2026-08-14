@@ -170,7 +170,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
     <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
       <div style={{maxWidth:1180, margin:'0 auto'}}>
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
-          📄 상세 화면 · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
+          {activeSec?.kind === 'cover' ? '🖼️ 표지 화면' : '📄 상세 화면'} · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', minHeight:600}}
           onClick={()=>onSelect(null)}>
@@ -198,9 +198,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
               )}
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
-                  <div style={{fontSize:32, marginBottom:12}}>📥</div>
-                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>여기에 컴포넌트를 드래그하세요</div>
-                  <div style={{fontSize:12}}>좌측 팔레트에서 원하는 컴포넌트를 끌어다 놓으세요.</div>
+                  <div style={{fontSize:32, marginBottom:12}}>{activeSec?.kind === 'cover' ? '🖼️' : '📥'}</div>
+                  <div style={{fontSize:14, fontWeight:700, color:'var(--sub)', marginBottom:6}}>
+                    {activeSec?.kind === 'cover' ? '표지 섹션은 히어로 컴포넌트로 채워집니다' : '여기에 컴포넌트를 드래그하세요'}
+                  </div>
+                  <div style={{fontSize:12}}>
+                    {activeSec?.kind === 'cover' ? '좌측 팔레트에서 히어로 컴포넌트를 클릭해 추가하세요.' : '좌측 팔레트에서 원하는 컴포넌트를 끌어다 놓으세요.'}
+                  </div>
                 </div>
               )}
               {componentList.map(cid => {

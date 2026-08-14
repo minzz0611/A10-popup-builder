@@ -206,21 +206,25 @@ function CompEditor({ comp, onChange }){
         <Field label="본문"><TextInput value={d.body} onChange={(v)=>set('body',v)} multiline rows={3}/></Field>
         <Field label="CTA 버튼 라벨"><TextInput value={d.ctaLabel} onChange={(v)=>set('ctaLabel',v)}/></Field>
         <Field label=" "><Toggle value={d.showCta!==false} onChange={(v)=>set('showCta',v)} label="CTA 버튼 표시"/></Field>
-        <Field label=" "><Toggle value={d.showDash!==false} onChange={(v)=>set('showDash',v)} label="미니 대시보드 표시"/></Field>
-        {d.showDash!==false && (
-          <>
-            <Field label="차트 라벨"><TextInput value={d.chartLabel} onChange={(v)=>set('chartLabel',v)}/></Field>
-            <Field label="KPI 항목 (3개 고정)">
-              <ArrayEditor items={d.kpis} onChange={(v)=>set('kpis',v)} itemLabel="KPI" maxItems={3}
-                defaultItem={{label:'',value:''}}
-                renderItem={(it,upd)=>(
-                  <div style={{display:'grid',gap:6}}>
-                    <TextInput value={it.label} onChange={(v)=>upd({label:v})} placeholder="라벨"/>
-                    <TextInput value={it.value} onChange={(v)=>upd({value:v})} placeholder="값"/>
-                  </div>
-                )}/>
-            </Field>
-          </>
+        <Field label=" "><Toggle value={d.showImage!==false} onChange={(v)=>set('showImage',v)} label="이미지 표시"/></Field>
+        {d.showImage!==false && (
+          <Field label="히어로 이미지" hint="캔버스에서 직접 클릭해서도 업로드할 수 있습니다.">
+            {d.image?.src ? (
+              <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1px solid var(--line)'}}>
+                <img src={d.image.src} style={{width:'100%',display:'block'}}/>
+                <button onClick={()=>set('image',{src:'',alt:''})}
+                  style={{position:'absolute',right:6,top:6,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'4px 8px',borderRadius:5,cursor:'pointer',fontSize:11}}>삭제</button>
+              </div>
+            ) : (
+              <label style={{display:'block',padding:'20px',border:'1.5px dashed var(--line)',borderRadius:8,textAlign:'center',fontSize:12,color:'var(--blue-dark)',fontWeight:700,cursor:'pointer'}}>
+                📁 이미지 업로드
+                <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{
+                  const f = e.target.files && e.target.files[0]; if(!f) return;
+                  const rd = new FileReader(); rd.onload = () => set('image',{src:rd.result, alt:f.name}); rd.readAsDataURL(f);
+                }}/>
+              </label>
+            )}
+          </Field>
         )}
       </div>
     );

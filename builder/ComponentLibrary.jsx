@@ -26,6 +26,7 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
       if(t) targetLabel = `${activeSec.label} · ${t.label}`;
     }
   }
+  const isCoverActive = activeSec?.kind === 'cover';
 
   // ------- Resizer drag handling -------
   const handleResizeStart = (e) => {
@@ -88,11 +89,17 @@ function ComponentLibrary({ state, activeSectionId, activeTabId, onAddComponent,
         <div style={{flex:'none',padding:'12px 14px 8px',borderBottom:'1px solid var(--line)'}}>
           <div style={{fontSize:12.5,fontWeight:800,color:'var(--ink)',letterSpacing:'-.01em',marginBottom:5}}>컴포넌트</div>
           <div style={{fontSize:11,color:'var(--mute)',lineHeight:1.5}}>
-            드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{targetLabel}</b>에 추가됩니다.
+            {isCoverActive
+              ? <>표지 섹션은 <b style={{color:'var(--blue-dark)'}}>히어로 컴포넌트</b>만 사용할 수 있습니다.</>
+              : <>드래그하여 캔버스에 놓거나, 클릭하면 <b style={{color:'var(--blue-dark)'}}>{targetLabel}</b>에 추가됩니다.</>}
           </div>
         </div>
         <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
-          {Object.keys(grouped).map(g => (
+          {isCoverActive ? (
+            <div style={{padding:'22px 14px',textAlign:'center',color:'var(--mute)',fontSize:12,lineHeight:1.6,border:'1.5px dashed var(--line)',borderRadius:10}}>
+              🖼️<br/>표지 섹션에는 히어로 컴포넌트가<br/>자동으로 적용되어 있어요.<br/>다른 컴포넌트는 추가할 수 없습니다.
+            </div>
+          ) : Object.keys(grouped).map(g => (
             <div key={g} style={{marginBottom:14}}>
               <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'0 4px 6px'}}>{g}</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
@@ -150,18 +157,24 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   (state.sidebar||[]).forEach(sec => {
     const active = activeSectionId === sec.id;
     const tabs = sec.tabs || [];
+    const isCover = sec.kind === 'cover';
     rows.push(
       <div key={sec.id} style={{marginBottom:4}}>
         <div style={{display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
           <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>onSelectSection(sec.id)}>
             {/* 상위 항목(그룹) - 사이드바 그룹 타이틀에 대응, 편집 가능 */}
-            <input
-              value={sec.group||'메뉴'}
-              onClick={(e)=>e.stopPropagation()}
-              onChange={(e)=>renameGroup(sec.id, e.target.value)}
-              placeholder="상위 항목"
-              style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 0'}}
-            />
+            <div style={{display:'flex',alignItems:'center',gap:5,padding:'2px 6px 0'}}>
+              {isCover && (
+                <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
+              )}
+              <input
+                value={sec.group||'메뉴'}
+                onClick={(e)=>e.stopPropagation()}
+                onChange={(e)=>renameGroup(sec.id, e.target.value)}
+                placeholder="상위 항목"
+                style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:0}}
+              />
+            </div>
             {/* 섹션 명칭 - 편집 가능 */}
             <input
               value={sec.label}
@@ -172,9 +185,11 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             />
           </div>
           {!tabs.length && <span style={{fontSize:11,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{sec.components.length}</span>}
-          <button title="하위 탭 추가" onClick={()=>onAddTab(sec.id)} style={iconBtn}
-            onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
-            onMouseLeave={(e)=>e.currentTarget.style.background='none'}>+</button>
+          {!isCover && (
+            <button title="하위 탭 추가" onClick={()=>onAddTab(sec.id)} style={iconBtn}
+              onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+              onMouseLeave={(e)=>e.currentTarget.style.background='none'}>+</button>
+          )}
           <button title="섹션 삭제" onClick={()=>{
             if(!confirm('이 섹션을 삭제하시겠습니까? 포함된 컴포넌트도 제거됩니다.')) return;
             const sidebar = state.sidebar.filter(s => s.id !== sec.id);
@@ -217,18 +232,35 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       </div>
     );
   });
+  const addFeatureSection = () => {
+    const id = window.uid('sec');
+    const num = (state.sidebar||[]).length + 1;
+    onProjectUpdate({
+      sidebar: [...(state.sidebar||[]), { id, label:`섹션 ${num}`, group:'메뉴', kind:'feature', components: [] }],
+      activeSectionId: id,
+    });
+  };
+  const addCoverSection = () => {
+    const id = window.uid('sec');
+    const heroId = window.uid('c');
+    const num = (state.sidebar||[]).length + 1;
+    onProjectUpdate({
+      components: { ...state.components, [heroId]: { id:heroId, type:'hero', data: window.DEFAULT_DATA.hero(), style:{spanCols:12} } },
+      sidebar: [...(state.sidebar||[]), { id, label:`표지 ${num}`, group:'메뉴', kind:'cover', components: [heroId] }],
+      activeSectionId: id,
+    });
+  };
   rows.push(
-    <button key="addsec" onClick={()=>{
-      const id = window.uid('sec');
-      const num = (state.sidebar||[]).length + 1;
-      onProjectUpdate({
-        sidebar: [...(state.sidebar||[]), { id, label:`섹션 ${num}`, group:'메뉴', components: [] }],
-        activeSectionId: id,
-      });
-    }}
-      style={{width:'100%',padding:'8px',marginTop:6,border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:12,fontWeight:700,cursor:'pointer'}}>
-      + 섹션 추가
-    </button>
+    <div key="addsec" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:6}}>
+      <button onClick={addCoverSection}
+        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--purple)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
+        + 표지 추가
+      </button>
+      <button onClick={addFeatureSection}
+        style={{padding:'8px 4px',border:'1.5px dashed var(--line)',background:'transparent',borderRadius:8,color:'var(--blue-dark)',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>
+        + 기능 소개 추가
+      </button>
+    </div>
   );
 
   return <div>{rows}</div>;
