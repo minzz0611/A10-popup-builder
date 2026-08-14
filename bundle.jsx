@@ -333,6 +333,94 @@ function EImg({ src, alt, editing, onChange, className, style, placeholder = '�
 }
 window.EImg = EImg;
 
+// ------- Hero image: keeps original aspect ratio, drag-to-resize (center-anchored), always centered -------
+const HERO_IMG_MIN_W = 160, HERO_IMG_MAX_W = 640;
+
+function HeroImage({ image, editing, onChange }){
+  const inputRef = rUseRef(null);
+  const draggingRef = rUseRef(false);
+  const [liveWidth, setLiveWidth] = rUseState(null);
+  const baseWidth = image?.width || HERO_IMG_MAX_W;
+  const width = liveWidth != null ? liveWidth : baseWidth;
+
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => onChange({ ...(image||{}), src: rd.result, alt: f.name });
+    rd.readAsDataURL(f);
+  };
+
+  // Drag the corner handle to resize. Grows/shrinks symmetrically (2× the
+  // mouse delta) so the image stays centered no matter the width.
+  const handleResizeStart = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = width;
+    document.body.style.cursor = 'nwse-resize';
+    const onMove = (ev) => {
+      if(!draggingRef.current) return;
+      let w = startWidth + (ev.clientX - startX) * 2;
+      w = Math.max(HERO_IMG_MIN_W, Math.min(HERO_IMG_MAX_W, w));
+      setLiveWidth(w);
+    };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        let w = startWidth + (ev.clientX - startX) * 2;
+        w = Math.max(HERO_IMG_MIN_W, Math.min(HERO_IMG_MAX_W, w));
+        onChange({ ...(image||{}), width: w });
+        setLiveWidth(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  if(image?.src){
+    return (
+      <div style={{margin:'16px auto 0', width, maxWidth:'100%', position:'relative'}}>
+        <div style={{borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
+          <img src={image.src} alt={image.alt||''} style={{width:'100%',height:'auto',display:'block'}}/>
+        </div>
+        {editing && (
+          <>
+            <button onClick={(e)=>{e.stopPropagation(); inputRef.current && inputRef.current.click();}}
+              style={{position:'absolute',right:8,bottom:8,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'6px 10px',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:700}}
+            >이미지 변경</button>
+            <div onMouseDown={handleResizeStart} title="드래그하여 크기 조절"
+              style={{position:'absolute',right:-6,bottom:-6,width:14,height:14,borderRadius:4,background:'var(--blue)',border:'2px solid #fff',boxShadow:'0 1px 4px rgba(0,0,0,.3)',cursor:'nwse-resize'}}/>
+          </>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e)=>{ if(editing){ e.stopPropagation(); inputRef.current && inputRef.current.click(); } }}
+      style={{
+        margin:'16px auto 0', width, maxWidth:'100%', height:220, borderRadius:13,
+        background:'linear-gradient(135deg,#EEF1F6,#E4E9F0)', color:'#8891A3',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        border:'1.5px dashed #C3C8D2', fontSize:12,fontWeight:600,
+        cursor: editing ? 'pointer' : 'default',
+      }}
+    >
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:22,marginBottom:6}}>🖼️</div>
+        <div>{editing ? '히어로 이미지 업로드 (클릭)' : '히어로 이미지'}</div>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+    </div>
+  );
+}
+
 // ============================================================
 // 1. HERO — 배지 + 그라디언트 제목 + 서브 + 본문 + CTA + 이미지
 // ============================================================
@@ -358,12 +446,7 @@ function HeroBlock({ data, editing, onChange }){
         </div>
       )}
       {d.showImage !== false && (
-        <div style={{margin:'16px auto 0',maxWidth:640,borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
-          <EImg src={d.image?.src} alt={d.image?.alt} editing={editing}
-            onChange={(v)=>upd('image',{ src:v.src, alt:v.name })}
-            placeholder="히어로 이미지 업로드"
-            style={{width:'100%',height:280}}/>
-        </div>
+        <HeroImage image={d.image} editing={editing} onChange={(img)=>upd('image', img)}/>
       )}
     </section>
   );
@@ -751,7 +834,7 @@ window.DEFAULT_DATA = {
     badge:'Amaranth10 × ERP AI 서비스', title:'AI 분석리포트',
     subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
     body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
-    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'' },
+    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
   }),
   'kpi-grid': () => ({ cols:3, items:[
     {label:'매출액',value:'₩482M',delta:'+12.3%'},
@@ -1336,7 +1419,7 @@ function CompEditor({ comp, onChange }){
         <Field label=" "><Toggle value={d.showCta!==false} onChange={(v)=>set('showCta',v)} label="CTA 버튼 표시"/></Field>
         <Field label=" "><Toggle value={d.showImage!==false} onChange={(v)=>set('showImage',v)} label="이미지 표시"/></Field>
         {d.showImage!==false && (
-          <Field label="히어로 이미지" hint="캔버스에서 직접 클릭해서도 업로드할 수 있습니다.">
+          <Field label="히어로 이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
             {d.image?.src ? (
               <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1px solid var(--line)'}}>
                 <img src={d.image.src} style={{width:'100%',display:'block'}}/>
@@ -1348,10 +1431,18 @@ function CompEditor({ comp, onChange }){
                 📁 이미지 업로드
                 <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{
                   const f = e.target.files && e.target.files[0]; if(!f) return;
-                  const rd = new FileReader(); rd.onload = () => set('image',{src:rd.result, alt:f.name}); rd.readAsDataURL(f);
+                  const rd = new FileReader(); rd.onload = () => set('image',{...(d.image||{}), src:rd.result, alt:f.name}); rd.readAsDataURL(f);
                 }}/>
               </label>
             )}
+          </Field>
+        )}
+        {d.showImage!==false && d.image?.src && (
+          <Field label={`이미지 크기 (${d.image?.width||640}px)`} hint="원본 비율은 그대로 유지되며, 항상 가운데 정렬됩니다.">
+            <input type="range" min={160} max={640} step={10}
+              value={d.image?.width||640}
+              onChange={(e)=>set('image',{...(d.image||{}), width:Number(e.target.value)})}
+              style={{width:'100%'}}/>
           </Field>
         )}
       </div>
@@ -1842,8 +1933,9 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   const renameSection = (id, label) => {
     onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, label } : s) });
   };
-  const renameGroup = (id, group) => {
-    onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, group } : s) });
+  // 그룹명은 여러 섹션이 공유하는 값이므로, 하나를 바꾸면 같은 그룹에 속한 섹션 전체에 반영
+  const renameGroup = (oldGroup, newGroup) => {
+    onProjectUpdate({ sidebar: state.sidebar.map(s => (s.group||'메뉴') === oldGroup ? { ...s, group: newGroup } : s) });
   };
   const renameTab = (sectionId, tabId, label) => {
     onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).map(t => t.id === tabId ? { ...t, label } : t) } : s) });
@@ -1854,42 +1946,42 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
-      style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:4,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+      style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:8,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
       <span>🏠</span>
       <span style={{flex:1}}>히어로 화면</span>
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
-  rows.push(<div key="div" style={{height:1,background:'var(--line)',margin:'8px 0'}}/>);
-  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'6px 4px 4px'}}>사이드메뉴 섹션</div>);
+  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>사이드메뉴 섹션</div>);
+
+  // ------- 같은 group 값을 공유하는 섹션끼리 묶기 (0뎁스: 그룹, 1뎁스: 섹션, 2뎁스: 하위 탭) -------
+  const groupOrder = [];
+  const groupedSections = {};
   (state.sidebar||[]).forEach(sec => {
+    const g = sec.group || '메뉴';
+    if(!groupedSections[g]){ groupedSections[g] = []; groupOrder.push(g); }
+    groupedSections[g].push(sec);
+  });
+
+  const renderSectionRow = (sec) => {
     const active = activeSectionId === sec.id;
     const tabs = sec.tabs || [];
     const isCover = sec.kind === 'cover';
-    rows.push(
-      <div key={sec.id} style={{marginBottom:4}}>
+    const selectThis = () => onSelectSection(sec.id);
+    return (
+      <div key={sec.id} style={{marginBottom:2}}>
         <div style={{display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-          <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>onSelectSection(sec.id)}>
-            {/* 상위 항목(그룹) - 사이드바 그룹 타이틀에 대응, 편집 가능 */}
-            <div style={{display:'flex',alignItems:'center',gap:5,padding:'2px 6px 0'}}>
-              {isCover && (
-                <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
-              )}
-              <input
-                value={sec.group||'메뉴'}
-                onClick={(e)=>e.stopPropagation()}
-                onChange={(e)=>renameGroup(sec.id, e.target.value)}
-                placeholder="상위 항목"
-                style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:0}}
-              />
-            </div>
-            {/* 섹션 명칭 - 편집 가능 */}
+          <div style={{flex:1,minWidth:0,cursor:'pointer',display:'flex',alignItems:'center',gap:5,padding:'2px 6px'}} onClick={selectThis}>
+            {isCover && (
+              <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
+            )}
+            {/* 섹션 명칭 - 클릭 시 해당 섹션으로 이동, 인라인 편집 가능 */}
             <input
               value={sec.label}
-              onClick={(e)=>e.stopPropagation()}
+              onClick={(e)=>{ e.stopPropagation(); selectThis(); }}
               onChange={(e)=>renameSection(sec.id, e.target.value)}
               placeholder="섹션 이름"
-              style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'1px 6px 4px'}}
+              style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'3px 0'}}
             />
           </div>
           {!tabs.length && <span style={{fontSize:11,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{sec.components.length}</span>}
@@ -1913,9 +2005,9 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             onMouseLeave={(e)=>e.currentTarget.style.background='none'}>✕</button>
         </div>
 
-        {/* 하위 탭 */}
+        {/* 하위 탭 (2뎁스) */}
         {!!tabs.length && (
-          <div style={{marginLeft:18,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
+          <div style={{marginLeft:16,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
             {tabs.map(t => {
               const tActive = active && activeTabId === t.id;
               return (
@@ -1937,6 +2029,24 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             })}
           </div>
         )}
+      </div>
+    );
+  };
+
+  groupOrder.forEach((g, gi) => {
+    rows.push(
+      <div key={'grp-'+gi} style={{marginBottom:6}}>
+        {/* 0뎁스: 그룹(상위 항목) - 편집 시 같은 그룹 내 모든 섹션에 반영 */}
+        <input
+          value={g}
+          onChange={(e)=>renameGroup(g, e.target.value)}
+          placeholder="상위 항목"
+          style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 4px'}}
+        />
+        {/* 1뎁스: 같은 그룹에 속한 섹션들 - 연결선으로 하나의 그룹임을 표시 */}
+        <div style={{marginLeft:2,paddingLeft:8,borderLeft:'1.5px solid var(--line)'}}>
+          {groupedSections[g].map(sec => renderSectionRow(sec))}
+        </div>
       </div>
     );
   });

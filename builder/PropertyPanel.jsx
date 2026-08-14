@@ -208,7 +208,7 @@ function CompEditor({ comp, onChange }){
         <Field label=" "><Toggle value={d.showCta!==false} onChange={(v)=>set('showCta',v)} label="CTA 버튼 표시"/></Field>
         <Field label=" "><Toggle value={d.showImage!==false} onChange={(v)=>set('showImage',v)} label="이미지 표시"/></Field>
         {d.showImage!==false && (
-          <Field label="히어로 이미지" hint="캔버스에서 직접 클릭해서도 업로드할 수 있습니다.">
+          <Field label="히어로 이미지" hint="캔버스에서 직접 클릭 후 모서리를 드래그해도 크기를 조절할 수 있습니다.">
             {d.image?.src ? (
               <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1px solid var(--line)'}}>
                 <img src={d.image.src} style={{width:'100%',display:'block'}}/>
@@ -220,10 +220,18 @@ function CompEditor({ comp, onChange }){
                 📁 이미지 업로드
                 <input type="file" accept="image/*" style={{display:'none'}} onChange={(e)=>{
                   const f = e.target.files && e.target.files[0]; if(!f) return;
-                  const rd = new FileReader(); rd.onload = () => set('image',{src:rd.result, alt:f.name}); rd.readAsDataURL(f);
+                  const rd = new FileReader(); rd.onload = () => set('image',{...(d.image||{}), src:rd.result, alt:f.name}); rd.readAsDataURL(f);
                 }}/>
               </label>
             )}
+          </Field>
+        )}
+        {d.showImage!==false && d.image?.src && (
+          <Field label={`이미지 크기 (${d.image?.width||640}px)`} hint="원본 비율은 그대로 유지되며, 항상 가운데 정렬됩니다.">
+            <input type="range" min={160} max={640} step={10}
+              value={d.image?.width||640}
+              onChange={(e)=>set('image',{...(d.image||{}), width:Number(e.target.value)})}
+              style={{width:'100%'}}/>
           </Field>
         )}
       </div>

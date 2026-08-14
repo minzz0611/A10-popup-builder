@@ -84,6 +84,94 @@ function EImg({ src, alt, editing, onChange, className, style, placeholder = '�
 }
 window.EImg = EImg;
 
+// ------- Hero image: keeps original aspect ratio, drag-to-resize (center-anchored), always centered -------
+const HERO_IMG_MIN_W = 160, HERO_IMG_MAX_W = 640;
+
+function HeroImage({ image, editing, onChange }){
+  const inputRef = rUseRef(null);
+  const draggingRef = rUseRef(false);
+  const [liveWidth, setLiveWidth] = rUseState(null);
+  const baseWidth = image?.width || HERO_IMG_MAX_W;
+  const width = liveWidth != null ? liveWidth : baseWidth;
+
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => onChange({ ...(image||{}), src: rd.result, alt: f.name });
+    rd.readAsDataURL(f);
+  };
+
+  // Drag the corner handle to resize. Grows/shrinks symmetrically (2× the
+  // mouse delta) so the image stays centered no matter the width.
+  const handleResizeStart = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    draggingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = width;
+    document.body.style.cursor = 'nwse-resize';
+    const onMove = (ev) => {
+      if(!draggingRef.current) return;
+      let w = startWidth + (ev.clientX - startX) * 2;
+      w = Math.max(HERO_IMG_MIN_W, Math.min(HERO_IMG_MAX_W, w));
+      setLiveWidth(w);
+    };
+    const onUp = (ev) => {
+      if(draggingRef.current){
+        draggingRef.current = false;
+        document.body.style.cursor = '';
+        let w = startWidth + (ev.clientX - startX) * 2;
+        w = Math.max(HERO_IMG_MIN_W, Math.min(HERO_IMG_MAX_W, w));
+        onChange({ ...(image||{}), width: w });
+        setLiveWidth(null);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  if(image?.src){
+    return (
+      <div style={{margin:'16px auto 0', width, maxWidth:'100%', position:'relative'}}>
+        <div style={{borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
+          <img src={image.src} alt={image.alt||''} style={{width:'100%',height:'auto',display:'block'}}/>
+        </div>
+        {editing && (
+          <>
+            <button onClick={(e)=>{e.stopPropagation(); inputRef.current && inputRef.current.click();}}
+              style={{position:'absolute',right:8,bottom:8,background:'rgba(20,30,60,.75)',color:'#fff',border:'none',padding:'6px 10px',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:700}}
+            >이미지 변경</button>
+            <div onMouseDown={handleResizeStart} title="드래그하여 크기 조절"
+              style={{position:'absolute',right:-6,bottom:-6,width:14,height:14,borderRadius:4,background:'var(--blue)',border:'2px solid #fff',boxShadow:'0 1px 4px rgba(0,0,0,.3)',cursor:'nwse-resize'}}/>
+          </>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e)=>{ if(editing){ e.stopPropagation(); inputRef.current && inputRef.current.click(); } }}
+      style={{
+        margin:'16px auto 0', width, maxWidth:'100%', height:220, borderRadius:13,
+        background:'linear-gradient(135deg,#EEF1F6,#E4E9F0)', color:'#8891A3',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        border:'1.5px dashed #C3C8D2', fontSize:12,fontWeight:600,
+        cursor: editing ? 'pointer' : 'default',
+      }}
+    >
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:22,marginBottom:6}}>🖼️</div>
+        <div>{editing ? '히어로 이미지 업로드 (클릭)' : '히어로 이미지'}</div>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+    </div>
+  );
+}
+
 // ============================================================
 // 1. HERO — 배지 + 그라디언트 제목 + 서브 + 본문 + CTA + 이미지
 // ============================================================
@@ -109,12 +197,7 @@ function HeroBlock({ data, editing, onChange }){
         </div>
       )}
       {d.showImage !== false && (
-        <div style={{margin:'16px auto 0',maxWidth:640,borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
-          <EImg src={d.image?.src} alt={d.image?.alt} editing={editing}
-            onChange={(v)=>upd('image',{ src:v.src, alt:v.name })}
-            placeholder="히어로 이미지 업로드"
-            style={{width:'100%',height:280}}/>
-        </div>
+        <HeroImage image={d.image} editing={editing} onChange={(img)=>upd('image', img)}/>
       )}
     </section>
   );
@@ -502,7 +585,7 @@ window.DEFAULT_DATA = {
     badge:'Amaranth10 × ERP AI 서비스', title:'AI 분석리포트',
     subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
     body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
-    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'' },
+    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
   }),
   'kpi-grid': () => ({ cols:3, items:[
     {label:'매출액',value:'₩482M',delta:'+12.3%'},

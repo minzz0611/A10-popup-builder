@@ -134,8 +134,9 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   const renameSection = (id, label) => {
     onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, label } : s) });
   };
-  const renameGroup = (id, group) => {
-    onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === id ? { ...s, group } : s) });
+  // 그룹명은 여러 섹션이 공유하는 값이므로, 하나를 바꾸면 같은 그룹에 속한 섹션 전체에 반영
+  const renameGroup = (oldGroup, newGroup) => {
+    onProjectUpdate({ sidebar: state.sidebar.map(s => (s.group||'메뉴') === oldGroup ? { ...s, group: newGroup } : s) });
   };
   const renameTab = (sectionId, tabId, label) => {
     onProjectUpdate({ sidebar: state.sidebar.map(s => s.id === sectionId ? { ...s, tabs: (s.tabs||[]).map(t => t.id === tabId ? { ...t, label } : t) } : s) });
@@ -146,42 +147,42 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
-      style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:4,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
+      style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'8px 10px',border:'none',background: activeSectionId===null ? '#fff' : 'transparent',borderRadius:8,fontSize:13,fontWeight:700,color: activeSectionId===null ? 'var(--blue-dark)':'var(--ink)',cursor:'pointer',marginBottom:8,boxShadow: activeSectionId===null ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
       <span>🏠</span>
       <span style={{flex:1}}>히어로 화면</span>
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
-  rows.push(<div key="div" style={{height:1,background:'var(--line)',margin:'8px 0'}}/>);
-  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'6px 4px 4px'}}>사이드메뉴 섹션</div>);
+  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>사이드메뉴 섹션</div>);
+
+  // ------- 같은 group 값을 공유하는 섹션끼리 묶기 (0뎁스: 그룹, 1뎁스: 섹션, 2뎁스: 하위 탭) -------
+  const groupOrder = [];
+  const groupedSections = {};
   (state.sidebar||[]).forEach(sec => {
+    const g = sec.group || '메뉴';
+    if(!groupedSections[g]){ groupedSections[g] = []; groupOrder.push(g); }
+    groupedSections[g].push(sec);
+  });
+
+  const renderSectionRow = (sec) => {
     const active = activeSectionId === sec.id;
     const tabs = sec.tabs || [];
     const isCover = sec.kind === 'cover';
-    rows.push(
-      <div key={sec.id} style={{marginBottom:4}}>
+    const selectThis = () => onSelectSection(sec.id);
+    return (
+      <div key={sec.id} style={{marginBottom:2}}>
         <div style={{display:'flex',alignItems:'center',gap:2,padding:'4px 4px 3px',borderRadius:9,background: (active && !activeTabId) ? '#fff' : 'transparent',boxShadow: (active && !activeTabId) ? '0 1px 3px rgba(0,0,0,.06)' : 'none'}}>
-          <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>onSelectSection(sec.id)}>
-            {/* 상위 항목(그룹) - 사이드바 그룹 타이틀에 대응, 편집 가능 */}
-            <div style={{display:'flex',alignItems:'center',gap:5,padding:'2px 6px 0'}}>
-              {isCover && (
-                <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
-              )}
-              <input
-                value={sec.group||'메뉴'}
-                onClick={(e)=>e.stopPropagation()}
-                onChange={(e)=>renameGroup(sec.id, e.target.value)}
-                placeholder="상위 항목"
-                style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:0}}
-              />
-            </div>
-            {/* 섹션 명칭 - 편집 가능 */}
+          <div style={{flex:1,minWidth:0,cursor:'pointer',display:'flex',alignItems:'center',gap:5,padding:'2px 6px'}} onClick={selectThis}>
+            {isCover && (
+              <span style={{flex:'none',fontSize:9,fontWeight:800,color:'var(--purple)',background:'var(--grad-soft)',padding:'1px 6px',borderRadius:999}}>표지</span>
+            )}
+            {/* 섹션 명칭 - 클릭 시 해당 섹션으로 이동, 인라인 편집 가능 */}
             <input
               value={sec.label}
-              onClick={(e)=>e.stopPropagation()}
+              onClick={(e)=>{ e.stopPropagation(); selectThis(); }}
               onChange={(e)=>renameSection(sec.id, e.target.value)}
               placeholder="섹션 이름"
-              style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'1px 6px 4px'}}
+              style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'3px 0'}}
             />
           </div>
           {!tabs.length && <span style={{fontSize:11,color:'var(--mute)',flex:'none',padding:'0 2px'}}>{sec.components.length}</span>}
@@ -205,9 +206,9 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             onMouseLeave={(e)=>e.currentTarget.style.background='none'}>✕</button>
         </div>
 
-        {/* 하위 탭 */}
+        {/* 하위 탭 (2뎁스) */}
         {!!tabs.length && (
-          <div style={{marginLeft:18,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
+          <div style={{marginLeft:16,marginTop:2,paddingLeft:8,borderLeft:'1px dashed var(--line)'}}>
             {tabs.map(t => {
               const tActive = active && activeTabId === t.id;
               return (
@@ -229,6 +230,24 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
             })}
           </div>
         )}
+      </div>
+    );
+  };
+
+  groupOrder.forEach((g, gi) => {
+    rows.push(
+      <div key={'grp-'+gi} style={{marginBottom:6}}>
+        {/* 0뎁스: 그룹(상위 항목) - 편집 시 같은 그룹 내 모든 섹션에 반영 */}
+        <input
+          value={g}
+          onChange={(e)=>renameGroup(g, e.target.value)}
+          placeholder="상위 항목"
+          style={{display:'block',width:'100%',border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 4px'}}
+        />
+        {/* 1뎁스: 같은 그룹에 속한 섹션들 - 연결선으로 하나의 그룹임을 표시 */}
+        <div style={{marginLeft:2,paddingLeft:8,borderLeft:'1.5px solid var(--line)'}}>
+          {groupedSections[g].map(sec => renderSectionRow(sec))}
+        </div>
       </div>
     );
   });
