@@ -619,7 +619,7 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate }){
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate, isProtected }){
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -650,6 +650,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           const meta = window.COMPONENT_META.find(m => m.type === comp.type);
           const expanded = selectedId === cid;
           const isLast = idx === componentList.length - 1;
+          const locked = isProtected && isProtected(cid);
           return (
             <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
               <button onClick={()=>onSelect(expanded ? null : cid)}
@@ -694,10 +695,17 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
                       style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                       {window.Icons.Copy({size:12})} 복제
                     </button>
-                    <button onClick={()=>onDelete(comp.id)}
-                      style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-                      {window.Icons.Trash({size:12})} 삭제
-                    </button>
+                    {locked ? (
+                      <div title="표지의 히어로 컴포넌트는 삭제할 수 없습니다."
+                        style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'var(--panel)',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        🔒 삭제 불가
+                      </div>
+                    ) : (
+                      <button onClick={()=>onDelete(comp.id)}
+                        style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        {window.Icons.Trash({size:12})} 삭제
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -37,8 +37,6 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .nav-submenu{display:none;margin:0 0 6px 12px;padding-left:10px;border-left:1.5px solid var(--line);}
 .nav-submenu.active{display:block;}
 .nav-submenu button{padding:9px 10px;font-size:13px;gap:8px;}
-.nav-submenu button .num{flex:none;width:18px;height:18px;border-radius:50%;background:var(--line);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;}
-.nav-submenu button.active .num{background:var(--grad);color:#fff;}
 .content{flex:1;padding:0 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
@@ -119,7 +117,7 @@ async function buildFinalHtml(state){
       const showSubmenu = s.tabs && s.tabs.length && (navMode === 'toc' || navMode === 'both');
       const submenu = showSubmenu
         ? `<div class="nav-submenu${isFirst ? ' active' : ''}" data-parent="${s.id}">${s.tabs.map((t,ti) => (
-            `<button class="${ti===0?'active':''}" data-sec="${s.id}" data-subtab="${t.id}" onclick="goPanelSubTab('${s.id}','${t.id}')"><span class="num">${ti+1}</span><span>${escapeHtml(t.label)}</span></button>`
+            `<button class="${ti===0?'active':''}" data-sec="${s.id}" data-subtab="${t.id}" onclick="goPanelSubTab('${s.id}','${t.id}')">${escapeHtml(t.label)}</button>`
           )).join('')}</div>`
         : '';
       return btn + submenu;

@@ -296,7 +296,18 @@ function App(){
     setSelectedId(newComp.id);
   };
 
+  // 표지(히어로 화면 및 표지 섹션)의 히어로 컴포넌트는 항상 적용되어 있어야 하므로 삭제 불가
+  const isProtectedComponent = (id) => {
+    if(!state) return false;
+    if((state.heroComponents||[]).includes(id)) return true;
+    return (state.sidebar||[]).some(s => s.kind === 'cover' && (s.components||[]).includes(id));
+  };
+
   const handleDeleteComponent = (id) => {
+    if(isProtectedComponent(id)){
+      alert('표지의 히어로 컴포넌트는 삭제할 수 없습니다.');
+      return;
+    }
     commit(prev => {
       const components = { ...prev.components };
       delete components[id];
@@ -561,6 +572,7 @@ function App(){
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}
+            isProtected={isProtectedComponent}
           />
         </div>
       </div>
@@ -573,8 +585,10 @@ function App(){
             { label:'복제', icon: window.Icons.Copy({size:14}), shortcut:'Ctrl+D', onClick:()=>handleDuplicateComponent(contextMenu.compId) },
             { label:'위로 이동', icon:'▲', onClick:()=>handleMoveComponent(contextMenu.compId, 'up') },
             { label:'아래로 이동', icon:'▼', onClick:()=>handleMoveComponent(contextMenu.compId, 'down') },
-            { divider:true },
-            { label:'삭제', icon: window.Icons.Trash({size:14}), shortcut:'Del', danger:true, onClick:()=>handleDeleteComponent(contextMenu.compId) },
+            ...(isProtectedComponent(contextMenu.compId) ? [] : [
+              { divider:true },
+              { label:'삭제', icon: window.Icons.Trash({size:14}), shortcut:'Del', danger:true, onClick:()=>handleDeleteComponent(contextMenu.compId) },
+            ]),
           ]}
         />
       )}

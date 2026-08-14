@@ -1012,8 +1012,6 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .nav-submenu{display:none;margin:0 0 6px 12px;padding-left:10px;border-left:1.5px solid var(--line);}
 .nav-submenu.active{display:block;}
 .nav-submenu button{padding:9px 10px;font-size:13px;gap:8px;}
-.nav-submenu button .num{flex:none;width:18px;height:18px;border-radius:50%;background:var(--line);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;}
-.nav-submenu button.active .num{background:var(--grad);color:#fff;}
 .content{flex:1;padding:0 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
@@ -1094,7 +1092,7 @@ async function buildFinalHtml(state){
       const showSubmenu = s.tabs && s.tabs.length && (navMode === 'toc' || navMode === 'both');
       const submenu = showSubmenu
         ? `<div class="nav-submenu${isFirst ? ' active' : ''}" data-parent="${s.id}">${s.tabs.map((t,ti) => (
-            `<button class="${ti===0?'active':''}" data-sec="${s.id}" data-subtab="${t.id}" onclick="goPanelSubTab('${s.id}','${t.id}')"><span class="num">${ti+1}</span><span>${escapeHtml(t.label)}</span></button>`
+            `<button class="${ti===0?'active':''}" data-sec="${s.id}" data-subtab="${t.id}" onclick="goPanelSubTab('${s.id}','${t.id}')">${escapeHtml(t.label)}</button>`
           )).join('')}</div>`
         : '';
       return btn + submenu;
@@ -2034,7 +2032,7 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate }){
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate, isProtected }){
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -2065,6 +2063,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           const meta = window.COMPONENT_META.find(m => m.type === comp.type);
           const expanded = selectedId === cid;
           const isLast = idx === componentList.length - 1;
+          const locked = isProtected && isProtected(cid);
           return (
             <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
               <button onClick={()=>onSelect(expanded ? null : cid)}
@@ -2109,10 +2108,17 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
                       style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--ink)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                       {window.Icons.Copy({size:12})} 복제
                     </button>
-                    <button onClick={()=>onDelete(comp.id)}
-                      style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-                      {window.Icons.Trash({size:12})} 삭제
-                    </button>
+                    {locked ? (
+                      <div title="표지의 히어로 컴포넌트는 삭제할 수 없습니다."
+                        style={{flex:1,padding:'7px 8px',border:'1px solid var(--line)',background:'var(--panel)',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        🔒 삭제 불가
+                      </div>
+                    ) : (
+                      <button onClick={()=>onDelete(comp.id)}
+                        style={{flex:1,padding:'7px 8px',border:'1px solid #FFD8E0',background:'#fff',borderRadius:7,fontSize:11.5,fontWeight:700,color:'var(--danger)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        {window.Icons.Trash({size:12})} 삭제
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -2730,11 +2736,11 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   if(activeSectionId === null){
     return (
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-        <div style={{maxWidth:900, margin:'0 auto'}}>
+        <div style={{maxWidth:1180, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
-          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative'}}
+          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', minHeight:600}}
             onClick={()=>onSelect(null)}
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
@@ -2841,7 +2847,6 @@ function SidebarNav({ state, activeSectionId, activeTabId, onSelect, onSelectTab
               return (
                 <button key={t.id} onClick={(e)=>{ e.stopPropagation(); onSelectTab && onSelectTab(s.id, t.id); }}
                   style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',background: tActive ? '#fff' : 'none', border:'none',padding:'9px 10px',borderRadius:8,fontSize:13,color: tActive ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: tActive ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
-                  <span style={{flex:'none',width:18,height:18,borderRadius:'50%',background: tActive?'var(--grad)':'var(--line)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800}}>{ti+1}</span>
                   <span style={{flex:1}}>{t.label}</span>
                 </button>
               );
@@ -3537,7 +3542,18 @@ function App(){
     setSelectedId(newComp.id);
   };
 
+  // 표지(히어로 화면 및 표지 섹션)의 히어로 컴포넌트는 항상 적용되어 있어야 하므로 삭제 불가
+  const isProtectedComponent = (id) => {
+    if(!state) return false;
+    if((state.heroComponents||[]).includes(id)) return true;
+    return (state.sidebar||[]).some(s => s.kind === 'cover' && (s.components||[]).includes(id));
+  };
+
   const handleDeleteComponent = (id) => {
+    if(isProtectedComponent(id)){
+      alert('표지의 히어로 컴포넌트는 삭제할 수 없습니다.');
+      return;
+    }
     commit(prev => {
       const components = { ...prev.components };
       delete components[id];
@@ -3802,6 +3818,7 @@ function App(){
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}
+            isProtected={isProtectedComponent}
           />
         </div>
       </div>
@@ -3814,8 +3831,10 @@ function App(){
             { label:'복제', icon: window.Icons.Copy({size:14}), shortcut:'Ctrl+D', onClick:()=>handleDuplicateComponent(contextMenu.compId) },
             { label:'위로 이동', icon:'▲', onClick:()=>handleMoveComponent(contextMenu.compId, 'up') },
             { label:'아래로 이동', icon:'▼', onClick:()=>handleMoveComponent(contextMenu.compId, 'down') },
-            { divider:true },
-            { label:'삭제', icon: window.Icons.Trash({size:14}), shortcut:'Del', danger:true, onClick:()=>handleDeleteComponent(contextMenu.compId) },
+            ...(isProtectedComponent(contextMenu.compId) ? [] : [
+              { divider:true },
+              { label:'삭제', icon: window.Icons.Trash({size:14}), shortcut:'Del', danger:true, onClick:()=>handleDeleteComponent(contextMenu.compId) },
+            ]),
           ]}
         />
       )}

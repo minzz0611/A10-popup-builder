@@ -205,11 +205,11 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   if(activeSectionId === null){
     return (
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-        <div style={{maxWidth:900, margin:'0 auto'}}>
+        <div style={{maxWidth:1180, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
-          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative'}}
+          <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', position:'relative', minHeight:600}}
             onClick={()=>onSelect(null)}
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
@@ -316,7 +316,6 @@ function SidebarNav({ state, activeSectionId, activeTabId, onSelect, onSelectTab
               return (
                 <button key={t.id} onClick={(e)=>{ e.stopPropagation(); onSelectTab && onSelectTab(s.id, t.id); }}
                   style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',background: tActive ? '#fff' : 'none', border:'none',padding:'9px 10px',borderRadius:8,fontSize:13,color: tActive ? 'var(--blue-dark)' : 'var(--sub)',cursor:'pointer',fontWeight:600,marginBottom:2, boxShadow: tActive ? '0 2px 8px rgba(30,50,120,.08)' : 'none'}}>
-                  <span style={{flex:'none',width:18,height:18,borderRadius:'50%',background: tActive?'var(--grad)':'var(--line)',color: tActive?'#fff':'var(--mute)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800}}>{ti+1}</span>
                   <span style={{flex:1}}>{t.label}</span>
                 </button>
               );
