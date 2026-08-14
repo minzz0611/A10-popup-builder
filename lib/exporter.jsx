@@ -20,9 +20,10 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .stage{max-width:1180px;width:100%;margin:0 auto;}
 .window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(700px, 88vh);display:flex;flex-direction:column;}
 .modal-shell{position:relative;background:#fff;flex:1;min-height:0;display:flex;flex-direction:column;}
-.modal-close{position:absolute;top:18px;right:20px;width:34px;height:34px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:18px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
+.modal-header{flex:none;position:relative;height:58px;}
+.modal-close{position:absolute;top:12px;right:20px;width:34px;height:34px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:18px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:#E7E9EE;}
-.modal-back{position:absolute;top:18px;left:20px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 14px;}
+.modal-back{position:absolute;top:12px;left:20px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 14px;}
 .modal-back:hover{background:var(--panel);}
 .modal-back.show{display:flex;}
 .screen{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;}
@@ -167,8 +168,10 @@ async function buildFinalHtml(state){
 <div class="stage">
   <div class="window" id="window">
     <div class="modal-shell" id="modalShell">
-      <button class="modal-close" onclick="closeModal()">&#10005;</button>
-      ${hasDetail ? `<button class="modal-back" id="backBtn" onclick="showHero()">&#8249; 처음으로</button>` : ''}
+      <div class="modal-header">
+        ${hasDetail ? `<button class="modal-back" id="backBtn" onclick="showHero()">&#8249; 처음으로</button>` : ''}
+        <button class="modal-close" onclick="closeModal()">&#10005;</button>
+      </div>
 
       <div class="screen active" id="heroScreen">
         ${heroHtml}
