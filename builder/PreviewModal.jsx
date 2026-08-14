@@ -5,6 +5,7 @@ const { useState: pmUseState } = React;
 function PreviewModal({ state, onClose }){
   const [screen, setScreen] = pmUseState('hero'); // hero | detail
   const [activeSection, setActiveSection] = pmUseState(state.activeSectionId || (state.sidebar||[])[0]?.id);
+  const windowHeight = state.popup?.windowHeight ?? 700;
 
   const showDetail = () => { setScreen('detail'); setActiveSection(state.activeSectionId || (state.sidebar||[])[0]?.id); };
   const showHero = () => setScreen('hero');
@@ -22,7 +23,7 @@ function PreviewModal({ state, onClose }){
       </button>
 
       <div style={{maxWidth:1180, width:'100%', margin:'0 auto'}}>
-        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:'min(780px, 88vh)', display:'flex', flexDirection:'column', position:'relative'}}>
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
           <button onClick={onClose}
             style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
           {screen === 'detail' && (

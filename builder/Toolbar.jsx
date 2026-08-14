@@ -5,7 +5,18 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
-  const windowHeight = state.popup?.windowHeight ?? 780;
+  const windowHeight = state.popup?.windowHeight ?? 700;
+  const [draftHeight, setDraftHeight] = tUseState(windowHeight);
+
+  // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
+  React.useEffect(()=>{ if(showHeightPopover) setDraftHeight(windowHeight); }, [showHeightPopover]);
+
+  const commitHeight = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(480, Math.min(900, isNaN(n) ? 700 : n));
+    onUpdateWindowHeight(clamped);
+    setDraftHeight(clamped);
+  };
 
   React.useEffect(()=>{
     if(savedIndicator){
@@ -83,28 +94,35 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
               <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
                 <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
                 <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
-                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요.
+                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <input type="range" min={480} max={900} step={10}
-                    value={windowHeight}
-                    onChange={(e)=>onUpdateWindowHeight(Number(e.target.value))}
+                    value={Number(draftHeight) || 480}
+                    onChange={(e)=>setDraftHeight(Number(e.target.value))}
                     style={{flex:1}}/>
                   <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
-                    <input type="number" min={480} max={900} step={10}
-                      value={windowHeight}
+                    <input type="number" min={480} max={900}
+                      value={draftHeight}
                       onChange={(e)=>{
-                        const v = Math.max(480, Math.min(900, Number(e.target.value) || 780));
-                        onUpdateWindowHeight(v);
+                        const raw = e.target.value;
+                        setDraftHeight(raw === '' ? '' : Number(raw));
                       }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitHeight(draftHeight); }}
                       style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
                     <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
                   </div>
                 </div>
-                <button onClick={()=>onUpdateWindowHeight(780)}
-                  style={{marginTop:8,width:'100%',padding:'6px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
-                  기본값(780px)으로
-                </button>
+                <div style={{display:'flex',gap:6,marginTop:10}}>
+                  <button onClick={()=>commitHeight(draftHeight)}
+                    style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                    저장
+                  </button>
+                  <button onClick={()=>commitHeight(700)}
+                    style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
+                    기본값(700px)
+                  </button>
+                </div>
               </div>
             </>
           )}

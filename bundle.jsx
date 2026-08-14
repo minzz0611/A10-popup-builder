@@ -55,6 +55,7 @@ const Icons = {
   Target: (p) => <IconSvg {...p} path="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />,
   MessageCircle: (p) => <IconSvg {...p} path="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
   File: (p) => <IconSvg {...p} path="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" />,
+  Square: (p) => <IconSvg {...p} path="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />,
 };
 window.Icons = Icons;
 
@@ -277,6 +278,18 @@ function hexToRgba(hex, alpha){
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// ------- hex color -> lighter tint (blended toward white), used to derive a
+// pale card background from a single picked "theme" color -------
+function lightenHex(hex, amount){
+  const h = String(hex||'#000000').replace('#','');
+  const full = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(full.substring(0,2),16) || 0;
+  const g = parseInt(full.substring(2,4),16) || 0;
+  const b = parseInt(full.substring(4,6),16) || 0;
+  const mix = (c) => Math.round(c + (255-c)*amount);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
 // ------- Editable Text primitive -------
 function ET({ tag = 'span', value, onChange, editing, className, style, multiline, placeholder }){
   const ref = rUseRef(null);
@@ -306,7 +319,6 @@ function ET({ tag = 'span', value, onChange, editing, className, style, multilin
       suppressContentEditableWarning
       onBlur={handleBlur}
       onKeyDown={handleKey}
-      onClick={(e) => { if(editing) e.stopPropagation(); }}
       data-placeholder={placeholder}
     >{value || (editing ? '' : '')}</Tag>
   );
@@ -619,6 +631,7 @@ function NumberedList({ data, editing, onChange }){
 function FeatureCards({ data, editing, onChange }){
   const d = data;
   const cols = d.cols || 2;
+  const centered = d.align === 'center';
   const upd = (i, k, v) => {
     const items = [...(d.items||[])];
     items[i] = { ...items[i], [k]: v };
@@ -627,7 +640,7 @@ function FeatureCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:16}}>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,padding:'18px 18px 16px',position:'relative',overflow:'hidden',background:'#fff',boxShadow:'0 2px 10px rgba(20,30,70,.05)'}}>
+        <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,padding:'18px 18px 16px',position:'relative',overflow:'hidden',background:'#fff',boxShadow:'0 2px 10px rgba(20,30,70,.05)',textAlign: centered ? 'center' : 'left'}}>
           <div style={{position:'absolute',top:0,left:0,right:0,height:4,background:it.color||'#2F6BFF'}}/>
           <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing} style={{fontSize:22,marginBottom:8,display:'block'}}/>
           <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:6}}/>
@@ -847,6 +860,7 @@ function HighlightBox({ data, editing, onChange }){
 // ============================================================
 function RoleCards({ data, editing, onChange }){
   const d = data;
+  const centered = d.align === 'center';
   const upd = (i, k, v) => {
     const items = [...(d.items||[])];
     items[i] = { ...items[i], [k]: v };
@@ -863,22 +877,29 @@ function RoleCards({ data, editing, onChange }){
   const iconBgs = ['var(--grad)','linear-gradient(90deg,#2FA8FF,#7B5CFA)','linear-gradient(90deg,#12B886,#2FA8FF)'];
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${d.items?.length||2},1fr)`,gap:14}}>
-      {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: it.bgColor || backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
-          <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background: iconBgs[i%iconBgs.length]}}>
-            <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
+      {(d.items||[]).map((it,i)=>{
+        // 테마 색상 하나만 고르면: 카드 배경은 그 색을 흰색과 섞어 연하게, 아이콘 배경은 그 색 그대로(진하게) 사용
+        const theme = it.themeColor;
+        const cardBg = theme ? lightenHex(theme, .85) : backgrounds[i%backgrounds.length];
+        const iconBg = theme || iconBgs[i%iconBgs.length];
+        return (
+          <div key={i} style={{borderRadius:14,padding:'16px 18px',background:cardBg,border:'1px solid var(--line)',textAlign: centered ? 'center' : 'left'}}>
+            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background:iconBg, margin: centered ? '0 auto 8px' : '0 0 8px'}}>
+              <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
+            </div>
+            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
+            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
+            {/* 불릿 목록은 카드 정렬과 무관하게 항상 좌측 정렬 */}
+            <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7,textAlign:'left'}}>
+              {(it.bullets||[]).map((b,li)=>(
+                <li key={li}>
+                  <ET tag="span" value={b} onChange={(v)=>updList(i,li,v)} editing={editing}/>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
-          <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
-          <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7}}>
-            {(it.bullets||[]).map((b,li)=>(
-              <li key={li}>
-                <ET tag="span" value={b} onChange={(v)=>updList(i,li,v)} editing={editing}/>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -916,6 +937,46 @@ function TextBlock({ data, editing, onChange }){
 }
 
 // ============================================================
+// 13. SHAPE — 텍스트를 담는 도형 (사각형/둥근사각형/알약형) + 앞머리 배지 옵션
+// ============================================================
+function ShapeBlock({ data, editing, onChange }){
+  const d = data;
+  const upd = (patch) => onChange({ ...d, ...patch });
+  const updBadge = (patch) => onChange({ ...d, badge: { ...(d.badge||{}), ...patch } });
+
+  const radius = d.shapeType === 'pill' ? 999 : d.shapeType === 'rect' ? 0 : 14;
+  const centered = d.align === 'center';
+
+  return (
+    <div style={{display:'flex', justifyContent: centered ? 'center' : 'flex-start'}}>
+      <div style={{
+        display:'inline-flex', alignItems:'center', gap:10, maxWidth:'100%',
+        padding: d.shapeType === 'pill' ? '10px 22px' : '14px 20px',
+        borderRadius: radius,
+        background: d.bgColor || '#EFF7FF',
+      }}>
+        {d.badge?.enabled && (
+          <span style={{
+            flex:'none', boxSizing:'border-box',
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+            minWidth:26, height:26, padding:'0 9px',
+            borderRadius:999,
+            background: d.badge.bgColor || '#1C90FB',
+            color: d.badge.textColor || '#fff',
+            fontSize:12.5, fontWeight:800, lineHeight:1,
+          }}>
+            <ET tag="span" value={d.badge.content} onChange={(v)=>updBadge({content:v})} editing={editing} placeholder="1"/>
+          </span>
+        )}
+        <ET tag="span" value={d.text} onChange={(v)=>upd({text:v})} editing={editing} multiline
+          placeholder="내용을 입력하세요"
+          style={{color: d.textColor || '#1C3050', fontSize:14, fontWeight:600, lineHeight:1.5}}/>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Registry
 // ============================================================
 window.RENDERERS = {
@@ -932,6 +993,7 @@ window.RENDERERS = {
   'role-cards': RoleCards,
   'section-heading': SectionHeading,
   'text-block': TextBlock,
+  'shape': ShapeBlock,
 };
 
 window.COMPONENT_META = [
@@ -940,6 +1002,7 @@ window.COMPONENT_META = [
   { type:'kpi-grid', label:'KPI 카드', icon:'Grid', group:'데이터', desc:'수치 지표 카드 그리드' },
   { type:'table', label:'표 / 테이블', icon:'Table', group:'데이터', desc:'행과 열의 데이터' },
   { type:'text-block', label:'일반 텍스트', icon:'Type', group:'컨텐츠', desc:'자유롭게 입력하는 본문 텍스트' },
+  { type:'shape', label:'도형 (텍스트 입력)', icon:'Square', group:'컨텐츠', desc:'텍스트를 담는 도형 · 앞머리 배지 옵션' },
   { type:'card-grid', label:'카드 그리드', icon:'Layers', group:'컨텐츠', desc:'2~4열 일반 카드' },
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
@@ -953,61 +1016,65 @@ window.COMPONENT_META = [
 // Default data factories - what a fresh component looks like
 window.DEFAULT_DATA = {
   hero: () => ({
-    badge:'Amaranth10 × ERP AI 서비스', title:'AI 분석리포트',
-    subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
-    body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
-    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
-    showVideoBtn:false, videoBtnLabel:'동영상 보기',
+    badge:'배지 텍스트를 입력하세요', title:'제목을 입력하세요',
+    subtitle:'부제목을 입력하세요',
+    body:'본문 설명을 입력하세요. 이 영역에는 서비스나 기능에 대한 상세 소개 문구가 들어갑니다.',
+    ctaLabel:'버튼 텍스트 입력', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
+    showVideoBtn:false, videoBtnLabel:'버튼 텍스트 입력',
   }),
   'kpi-grid': () => ({ cols:3, items:[
-    {label:'매출액',value:'₩482M',delta:'+12.3%'},
-    {label:'영업이익',value:'₩89M',delta:'+8.1%'},
-    {label:'거래 건수',value:'1,284',delta:'+204'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
   ]}),
   'card-grid': () => ({ cols:3, items:[
-    {title:'첫번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#2F6BFF',badge:''},
-    {title:'두번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#7B5CFA',badge:''},
-    {title:'세번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#12B886',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#2882FF',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#5601FF',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#1E3282',badge:''},
   ]}),
-  'process-flow': () => ({ tone:'blue', trackLabel:'전체 프로세스 · AI분석리포트 생성 흐름', steps:[
-    {title:'메뉴 진입',desc:'서비스 메뉴에서 신규 생성을 선택합니다.'},
-    {title:'데이터 선택',desc:'분석할 모듈 및 데이터 항목을 선택합니다.'},
-    {title:'AI 자동 생성',desc:'AI가 KPI·차트·표를 자동으로 구성합니다.'},
-    {title:'리포트 확인',desc:'생성된 대시보드와 인사이트를 확인합니다.'},
+  'process-flow': () => ({ tone:'blue', trackLabel:'전체 프로세스 흐름을 설명하는 문구를 입력하세요', steps:[
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
   ]}),
   'numbered-list': () => ({ items:[
-    {title:'데이터 수집',tag:'',desc:'선택한 데이터 소스에서 원본 행·열을 조회합니다.',example:''},
-    {title:'구조 분석',tag:'AI LLM',desc:'AI가 컬럼 구조와 데이터 특성을 자동 분류합니다.',example:'예) 매출액 합계 → KPI'},
-    {title:'대시보드 생성',tag:'',desc:'분류 결과를 바탕으로 최적의 KPI·차트·표를 구성합니다.',example:''},
+    {title:'단계명을 입력하세요',tag:'',desc:'단계에 대한 설명을 입력하세요.',example:''},
+    {title:'단계명을 입력하세요',tag:'태그(선택)',desc:'단계에 대한 설명을 입력하세요.',example:'예시 문구(선택)'},
+    {title:'단계명을 입력하세요',tag:'',desc:'단계에 대한 설명을 입력하세요.',example:''},
   ]}),
-  'feature-cards': () => ({ cols:2, items:[
-    {icon:'🤖',title:'AI 자동 대시보드 생성',desc:'분석할 데이터만 선택하면 초 단위 내에 완성된 대시보드를 제공합니다.',color:'#2F6BFF'},
-    {icon:'🎯',title:'담당자 맞춤형 리포트',desc:'각 업무 담당자에게 꼭 맞는 리포트를 자동으로 구성합니다.',color:'#7B5CFA'},
-    {icon:'💬',title:'대화형 편집',desc:'자연어로 수정 요청을 입력하면 AI가 즉시 반영합니다.',color:'#12B886'},
-    {icon:'📄',title:'보고서 변환·공유',desc:'PDF/문서로 즉시 변환하여 상위 보고자와 공유합니다.',color:'#FF7A45'},
+  'feature-cards': () => ({ cols:2, align:'left', items:[
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#2882FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#8947FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#B932FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#1E3282'},
   ]}),
   'table': () => ({
-    headers:['모듈','데이터명','설명'],
+    headers:['항목명','항목명','설명'],
     rows:[
-      ['회계관리','원가보고서','제품매출원가 데이터를 항목별로 분석합니다.'],
-      ['회계관리','자금현황','자금 계좌별 입출금 및 잔액 현황을 분석합니다.'],
-      ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#1C90FB', width:1 },
-    emphasis:{ enabled:false, color:'#1C90FB' } }),
+    border:{ enabled:false, color:'#2882FF', width:1 },
+    emphasis:{ enabled:false, color:'#2882FF' } }),
   'video-cards': () => ({ cols:2, items:[
-    {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
-    {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
   ]}),
-  'highlight-box': () => ({ icon:'💡', title:'꼭 알아두세요', body:'중요한 안내 사항이나 강조하고 싶은 내용을 여기에 입력하세요.' }),
-  'role-cards': () => ({ items:[
-    {icon:'🧑‍💼',title:'업무 담당자',desc:'담당 업무 영역에 맞는 데이터를 선택하여 맞춤형 리포트를 구성합니다.',bullets:['담당 데이터 실시간 분석','업무 흐름과 수치 추이 파악','팀 내 리포트 공유']},
-    {icon:'📊',title:'의사결정자',desc:'회사 전반의 핵심 지표를 한 화면에서 조망하여 신속한 의사결정을 지원합니다.',bullets:['핵심 KPI 종합 조망','부서·제품별 비교 분석','즉시 보고 자료 생성']},
+  'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
+  'role-cards': () => ({ align:'left', items:[
+    {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
+    {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
   ]}),
-  'section-heading': () => ({ title:'섹션 제목', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
-  'text-block': () => ({ body:'여기에 내용을 입력하세요.', align:'left', size:13 }),
+  'section-heading': () => ({ title:'섹션 제목을 입력하세요', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
+  'text-block': () => ({ body:'본문 내용을 입력하세요.', align:'left', size:13 }),
+  'shape': () => ({
+    text:'도형 안에 들어갈 텍스트를 입력하세요', shapeType:'rounded', bgColor:'#C5E1FF', textColor:'#0E1941', align:'left',
+    badge:{ enabled:false, content:'1', bgColor:'#2882FF', textColor:'#FFFFFF' },
+  }),
 };
 
 // Exporter: builds a self-contained HTML file (the final popup) + a JSON edit-state file.
@@ -1030,7 +1097,7 @@ html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 .host-page .host-block{background:#fff;border:1px solid var(--line);border-radius:12px;height:120px;margin-bottom:14px;}
 .overlay{position:fixed;inset:0;background:rgba(12,16,28,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;}
 .stage{max-width:1180px;width:100%;margin:0 auto;}
-.window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(780px, 88vh);display:flex;flex-direction:column;}
+.window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(700px, 88vh);display:flex;flex-direction:column;}
 .modal-shell{position:relative;background:#fff;flex:1;min-height:0;display:flex;flex-direction:column;}
 .modal-close{position:absolute;top:18px;right:20px;width:34px;height:34px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:18px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:#E7E9EE;}
@@ -1144,7 +1211,7 @@ async function buildFinalHtml(state){
   const footer = state.popup?.footer || {};
   const dontShow = state.popup?.dontShowOption !== false;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
-  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -1533,18 +1600,103 @@ window.DESIGN_PALETTE = [
     { name:'Color 07', hex:'#49C8F2' }, { name:'Color 08', hex:'#53A0FE' },
     { name:'Color 09', hex:'#8B8BFF' }, { name:'Color 10', hex:'#BC8FFF' },
   ]},
+  { group:'Gray 1', colors:[
+    { name:'Gray1 01', hex:'#FFFFFF' }, { name:'Gray1 02', hex:'#F2F2F2' },
+    { name:'Gray1 03', hex:'#D8D8D8' }, { name:'Gray1 04', hex:'#BFBFBF' },
+    { name:'Gray1 05', hex:'#A5A5A5' }, { name:'Gray1 06', hex:'#7F7F7F' },
+  ]},
+  { group:'Gray 2', colors:[
+    { name:'Gray2 01', hex:'#000000' }, { name:'Gray2 02', hex:'#7F7F7F' },
+    { name:'Gray2 03', hex:'#595959' }, { name:'Gray2 04', hex:'#3F3F3F' },
+    { name:'Gray2 05', hex:'#262626' }, { name:'Gray2 06', hex:'#0C0C0C' },
+  ]},
+  { group:'Blue 1', colors:[
+    { name:'Blue1 01', hex:'#C5E1FF' }, { name:'Blue1 02', hex:'#97C9FE' },
+    { name:'Blue1 03', hex:'#53A6FF' }, { name:'Blue1 04', hex:'#006DE2' },
+    { name:'Blue1 05', hex:'#003671' }, { name:'Blue1 06', hex:'#00152D' },
+  ]},
+  { group:'Blue 2', colors:[
+    { name:'Blue2 01', hex:'#5DAEFF' }, { name:'Blue2 02', hex:'#DEEEFF' },
+    { name:'Blue2 03', hex:'#BEDEFF' }, { name:'Blue2 04', hex:'#9DCEFF' },
+    { name:'Blue2 05', hex:'#0582FF' }, { name:'Blue2 06', hex:'#0057AE' },
+  ]},
+  { group:'Blue 3', colors:[
+    { name:'Blue3 01', hex:'#2882FF' }, { name:'Blue3 02', hex:'#D4E6FF' },
+    { name:'Blue3 03', hex:'#A9CDFE' }, { name:'Blue3 04', hex:'#7DB4FF' },
+    { name:'Blue3 05', hex:'#005CDD' }, { name:'Blue3 06', hex:'#003D93' },
+  ]},
+  { group:'Indigo', colors:[
+    { name:'Indigo 01', hex:'#374BFF' }, { name:'Indigo 02', hex:'#D7DBFF' },
+    { name:'Indigo 03', hex:'#AFB7FF' }, { name:'Indigo 04', hex:'#8793FF' },
+    { name:'Indigo 05', hex:'#0017E8' }, { name:'Indigo 06', hex:'#000F9B' },
+  ]},
+  { group:'Navy', colors:[
+    { name:'Navy 01', hex:'#1E3282' }, { name:'Navy 02', hex:'#C6CEF1' },
+    { name:'Navy 03', hex:'#8D9EE4' }, { name:'Navy 04', hex:'#546ED7' },
+    { name:'Navy 05', hex:'#162561' }, { name:'Navy 06', hex:'#0E1941' },
+  ]},
+  { group:'Purple 1', colors:[
+    { name:'Purple1 01', hex:'#5601FF' }, { name:'Purple1 02', hex:'#DDCCFF' },
+    { name:'Purple1 03', hex:'#BB99FF' }, { name:'Purple1 04', hex:'#9966FF' },
+    { name:'Purple1 05', hex:'#4000C0' }, { name:'Purple1 06', hex:'#2A0080' },
+  ]},
+  { group:'Purple 2', colors:[
+    { name:'Purple2 01', hex:'#8947FF' }, { name:'Purple2 02', hex:'#E7DAFE' },
+    { name:'Purple2 03', hex:'#CFB5FF' }, { name:'Purple2 04', hex:'#B890FF' },
+    { name:'Purple2 05', hex:'#5700F4' }, { name:'Purple2 06', hex:'#3A00A3' },
+  ]},
+  { group:'Magenta', colors:[
+    { name:'Magenta 01', hex:'#B932FF' }, { name:'Magenta 02', hex:'#F1D6FF' },
+    { name:'Magenta 03', hex:'#E3ADFF' }, { name:'Magenta 04', hex:'#D583FF' },
+    { name:'Magenta 05', hex:'#9600E4' }, { name:'Magenta 06', hex:'#640098' },
+  ]},
 ];
 
 function ColorPicker({ value, onChange }){
   const [open, setOpen] = pUseState(false);
   const [customHex, setCustomHex] = pUseState(value || '#000000');
+  const [coords, setCoords] = pUseState(null); // {top,left,width,maxHeight} - fixed-position, computed from the trigger button
   const wrapRef = React.useRef(null);
+  const btnRef = React.useRef(null);
+  const panelRef = React.useRef(null);
+
+  const computeCoords = () => {
+    const btn = btnRef.current;
+    if(!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const panelWidth = 284;
+    let left = rect.left;
+    if(left + panelWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - panelWidth - 8);
+    const spaceBelow = window.innerHeight - rect.bottom - 14;
+    const spaceAbove = rect.top - 14;
+    let top, maxHeight;
+    if(spaceBelow < 220 && spaceAbove > spaceBelow){
+      maxHeight = Math.min(400, spaceAbove);
+      top = Math.max(8, rect.top - 6 - maxHeight);
+    } else {
+      maxHeight = Math.min(400, Math.max(160, spaceBelow));
+      top = rect.bottom + 6;
+    }
+    setCoords({ top, left, width: panelWidth, maxHeight });
+  };
 
   React.useEffect(()=>{
     if(!open) return;
-    const onDoc = (e) => { if(wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    computeCoords();
+    const onDoc = (e) => {
+      if(wrapRef.current && wrapRef.current.contains(e.target)) return;
+      if(panelRef.current && panelRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onReposition = () => computeCoords();
     document.addEventListener('mousedown', onDoc);
-    return ()=>document.removeEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onReposition, true);
+    window.addEventListener('resize', onReposition);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onReposition, true);
+      window.removeEventListener('resize', onReposition);
+    };
   }, [open]);
 
   React.useEffect(()=>{ if(open) setCustomHex(value || '#000000'); }, [open]);
@@ -1564,9 +1716,46 @@ function ColorPicker({ value, onChange }){
     } catch(e) { /* 사용자가 취소함 */ }
   };
 
+  const panel = (open && coords) ? ReactDOM.createPortal(
+    <div ref={panelRef} style={{position:'fixed',zIndex:9999,top:coords.top,left:coords.left,width:coords.width,maxHeight:coords.maxHeight,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
+      {window.DESIGN_PALETTE.map(g => (
+        <div key={g.group} style={{marginBottom:10}}>
+          <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
+            {g.colors.map(c => (
+              <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
+                onClick={()=>{ onChange(c.hex); setOpen(false); }}
+                style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
+        <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
+            onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
+            title="색상 선택기"
+            style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
+          <input type="text" value={customHex}
+            onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
+            placeholder="#RRGGBB"
+            style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
+          {!!window.EyeDropper && (
+            <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
+              style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              💧
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={wrapRef} style={{position:'relative'}}>
-      <button onClick={()=>setOpen(o=>!o)} type="button"
+      <button ref={btnRef} onClick={()=>setOpen(o=>!o)} type="button"
         style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'7px 10px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',cursor:'pointer'}}>
         <span style={{width:18,height:18,borderRadius:5,flex:'none',background:value||'#fff',border:'1px solid rgba(0,0,0,.12)'}}/>
         <span style={{fontSize:12.5,color:'var(--ink)',fontWeight:600,flex:1,textAlign:'left',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
@@ -1574,42 +1763,7 @@ function ColorPicker({ value, onChange }){
         </span>
         <span style={{fontSize:10.5,color:'var(--mute)'}}>{value||''}</span>
       </button>
-
-      {open && (
-        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:400,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
-          {window.DESIGN_PALETTE.map(g => (
-            <div key={g.group} style={{marginBottom:10}}>
-              <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
-                {g.colors.map(c => (
-                  <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
-                    onClick={()=>{ onChange(c.hex); setOpen(false); }}
-                    style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
-            <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
-                onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
-                title="색상 선택기"
-                style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
-              <input type="text" value={customHex}
-                onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
-                placeholder="#RRGGBB"
-                style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
-              {!!window.EyeDropper && (
-                <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
-                  style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  💧
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {panel}
     </div>
   );
 }
@@ -1863,6 +2017,7 @@ function CompEditor({ comp, onChange }){
           <Segmented value={d.cols||2} onChange={(v)=>set('cols',v)}
             options={[{value:2,label:'2열'},{value:3,label:'3열'},{value:4,label:'4열'}]}/>
         </Field>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="카드 내용 가운데 정렬"/></Field>
         <Field label="특징">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="특징"
             defaultItem={{icon:'✨',title:'제목',desc:'설명',color:'#2F6BFF'}}
@@ -2110,9 +2265,44 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'shape'){
+    return (
+      <div>
+        <Field label="내용"><TextInput value={d.text} onChange={(v)=>set('text',v)} multiline rows={2}/></Field>
+        <Field label="도형 형태">
+          <Segmented value={d.shapeType||'rounded'} onChange={(v)=>set('shapeType',v)}
+            options={[{value:'rect',label:'사각형'},{value:'rounded',label:'둥근 사각형'},{value:'pill',label:'알약형'}]}/>
+        </Field>
+        <Field label="배경 색상"><ColorPicker value={d.bgColor} onChange={(hex)=>set('bgColor',hex)}/></Field>
+        <Field label="텍스트 색상"><ColorPicker value={d.textColor} onChange={(hex)=>set('textColor',hex)}/></Field>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="컴포넌트 가운데 정렬"/></Field>
+
+        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>앞머리 배지</div>
+        <Field label=" ">
+          <Toggle value={!!d.badge?.enabled} onChange={(v)=>onChange({...d, badge:{...(d.badge||{}), enabled:v}})} label="도형 앞에 배지 추가"/>
+        </Field>
+        {d.badge?.enabled && (
+          <>
+            <Field label="배지 내용" hint="숫자·아이콘·기호·텍스트 모두 가능하며, 길이에 따라 너비가 자동으로 늘어나요.">
+              <TextInput value={d.badge?.content} onChange={(v)=>onChange({...d, badge:{...(d.badge||{}), content:v}})} placeholder="1"/>
+            </Field>
+            <Field label="배지 배경 색상">
+              <ColorPicker value={d.badge?.bgColor} onChange={(hex)=>onChange({...d, badge:{...(d.badge||{}), bgColor:hex}})}/>
+            </Field>
+            <Field label="배지 텍스트 색상">
+              <ColorPicker value={d.badge?.textColor} onChange={(hex)=>onChange({...d, badge:{...(d.badge||{}), textColor:hex}})}/>
+            </Field>
+          </>
+        )}
+      </div>
+    );
+  }
+
   if(t === 'role-cards'){
     return (
       <div>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="카드 내용 가운데 정렬"/></Field>
+        <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:8,lineHeight:1.5}}>불릿 항목은 가운데 정렬을 켜도 항상 왼쪽 정렬로 표시돼요.</div>
         <Field label="역할 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="역할" maxItems={3}
             defaultItem={{icon:'👤',title:'역할',desc:'설명',bullets:['항목 1','항목 2']}}
@@ -2121,12 +2311,28 @@ function CompEditor({ comp, onChange }){
                 <TextInput value={it.icon} onChange={(v)=>upd({icon:v})} placeholder="아이콘"/>
                 <TextInput value={it.title} onChange={(v)=>upd({title:v})} placeholder="역할명"/>
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
-                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목 (한 줄에 하나씩)</div>
-                <TextInput value={(it.bullets||[]).join('\n')} onChange={(v)=>upd({bullets: v.split('\n').filter(x=>x.trim())})} multiline rows={4}/>
-                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>배경 색상</div>
-                <ColorPicker value={it.bgColor} onChange={(hex)=>upd({bgColor:hex})}/>
-                {it.bgColor && (
-                  <button type="button" onClick={()=>upd({bgColor:''})}
+
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목</div>
+                {(it.bullets||[]).map((b, bi) => (
+                  <div key={bi} style={{display:'flex',gap:4,alignItems:'center'}}>
+                    <div style={{flex:1}}>
+                      <TextInput value={b} placeholder={`항목 ${bi+1}`}
+                        onChange={(v)=>{ const bullets=[...(it.bullets||[])]; bullets[bi]=v; upd({bullets}); }}/>
+                    </div>
+                    <button type="button" onClick={()=>{ const bullets=(it.bullets||[]).filter((_,idx)=>idx!==bi); upd({bullets}); }}
+                      style={{flex:'none',width:26,height:26,border:'1px solid var(--line)',borderRadius:6,background:'#fff',color:'var(--danger)',cursor:'pointer',fontSize:12}}>✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={()=>upd({bullets:[...(it.bullets||[]), '']})}
+                  style={{padding:'6px 8px',border:'1px dashed var(--line)',borderRadius:7,background:'#fff',fontSize:11,fontWeight:700,color:'var(--blue-dark)',cursor:'pointer'}}>
+                  + 불릿 항목 추가
+                </button>
+
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:6}}>테마 색상</div>
+                <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:2,lineHeight:1.5}}>색을 하나 고르면 카드 배경은 연하게, 아이콘 배경은 그 색 그대로 진하게 적용돼요.</div>
+                <ColorPicker value={it.themeColor} onChange={(hex)=>upd({themeColor:hex})}/>
+                {it.themeColor && (
+                  <button type="button" onClick={()=>upd({themeColor:''})}
                     style={{fontSize:10.5,color:'var(--mute)',background:'none',border:'none',cursor:'pointer',textAlign:'left',padding:0}}>
                     기본 배경으로 되돌리기
                   </button>
@@ -2145,6 +2351,12 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
+  const itemRefs = React.useRef({});
+  React.useEffect(() => {
+    if(selectedId && itemRefs.current[selectedId]){
+      itemRefs.current[selectedId].scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }
+  }, [selectedId]);
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s => s.id === activeSectionId);
   const activeTab = activeSec?.tabs?.find(t => t.id === activeTabId) || null;
   const screenLabel = activeSectionId === null
@@ -2174,7 +2386,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           const isLast = idx === componentList.length - 1;
           const locked = isProtected && isProtected(cid);
           return (
-            <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
+            <div key={cid} ref={(el)=>{ itemRefs.current[cid]=el; }} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
               <button onClick={()=>onSelect(expanded ? null : cid)}
                 style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'10px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left'}}>
                 <span style={{flex:'none',fontSize:11,color:'var(--mute)',fontWeight:700,width:14,textAlign:'center'}}>{idx+1}</span>
@@ -2484,8 +2696,24 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       if((sidebar[i].group||'메뉴') === group){ insertAt = i + 1; break; }
     }
     const id = window.uid('sec');
-    sidebar.splice(insertAt, 0, { id, label:`섹션 ${num}`, group, kind:'feature', components: [] });
-    onProjectUpdate({ sidebar, activeSectionId: id });
+    // 새 섹션엔 기본으로 '섹션 헤딩' 컴포넌트를 하나 넣어둔다 (수정·삭제 자유로운 일반 컴포넌트)
+    const headingId = window.uid('c');
+    const components = { ...state.components, [headingId]: { id:headingId, type:'section-heading', data: window.DEFAULT_DATA['section-heading'](), style:{spanCols:12} } };
+    sidebar.splice(insertAt, 0, { id, label:`섹션 ${num}`, group, kind:'feature', components: [headingId] });
+    onProjectUpdate({ sidebar, components, activeSectionId: id });
+  };
+
+  // 기존 그룹과 겹치지 않는 완전히 새로운 1뎁스(그룹+첫 섹션)를 추가
+  const addNewGroup = () => {
+    const existingGroups = new Set((state.sidebar||[]).map(s => s.group || '메뉴'));
+    let name = '새 그룹', n = 2;
+    while(existingGroups.has(name)){ name = `새 그룹 ${n}`; n++; }
+    const sidebar = [...(state.sidebar||[])];
+    const id = window.uid('sec');
+    const headingId = window.uid('c');
+    const components = { ...state.components, [headingId]: { id:headingId, type:'section-heading', data: window.DEFAULT_DATA['section-heading'](), style:{spanCols:12} } };
+    sidebar.push({ id, label:'섹션 1', group:name, kind:'feature', components:[headingId] });
+    onProjectUpdate({ sidebar, components, activeSectionId:id });
   };
 
   const iconBtn = {border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:13,borderRadius:5,flex:'none',display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22};
@@ -2499,7 +2727,14 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
-  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>목록</div>);
+  rows.push(
+    <div key="lbl" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'2px 2px 4px'}}>
+      <span style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em'}}>목록</span>
+      <button title="새 항목 추가" onClick={addNewGroup} style={iconBtn}
+        onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+        onMouseLeave={(e)=>e.currentTarget.style.background='none'}>+</button>
+    </div>
+  );
 
   // ------- 같은 group 값을 공유하는 섹션끼리 묶기 (0뎁스: 그룹, 1뎁스: 섹션, 2뎁스: 하위 탭) -------
   const groupOrder = [];
@@ -2766,7 +3001,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
-  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -2869,7 +3104,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDrop={handleContainerDrop}
           >
             <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
-            <div style={{flex:1, minHeight:0, overflowY:'auto', padding:'12px 14px'}}>
+            <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
                   <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
@@ -2933,6 +3168,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                 </div>
               )}
               {renderComponentList()}
+              {editing && componentList.length === 1 && activeSec?.kind !== 'cover' && state.components[componentList[0]]?.type === 'section-heading' && (
+                <div style={{marginTop:14, padding:'26px 20px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
+                  <div style={{fontSize:26, marginBottom:8}}>📥</div>
+                  <div style={{fontSize:13, fontWeight:700, color:'var(--sub)', marginBottom:4}}>아래에 컴포넌트를 추가하세요</div>
+                  <div style={{fontSize:11.5}}>좌측 팔레트에서 원하는 컴포넌트를 끌어다 놓거나 클릭해서 추가할 수 있어요.</div>
+                </div>
+              )}
             </div>
           </div>
           <PopupFooter state={state}/>
@@ -3012,7 +3254,18 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
-  const windowHeight = state.popup?.windowHeight ?? 780;
+  const windowHeight = state.popup?.windowHeight ?? 700;
+  const [draftHeight, setDraftHeight] = tUseState(windowHeight);
+
+  // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
+  React.useEffect(()=>{ if(showHeightPopover) setDraftHeight(windowHeight); }, [showHeightPopover]);
+
+  const commitHeight = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(480, Math.min(900, isNaN(n) ? 700 : n));
+    onUpdateWindowHeight(clamped);
+    setDraftHeight(clamped);
+  };
 
   React.useEffect(()=>{
     if(savedIndicator){
@@ -3090,28 +3343,35 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
               <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
                 <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
                 <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
-                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요.
+                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <input type="range" min={480} max={900} step={10}
-                    value={windowHeight}
-                    onChange={(e)=>onUpdateWindowHeight(Number(e.target.value))}
+                    value={Number(draftHeight) || 480}
+                    onChange={(e)=>setDraftHeight(Number(e.target.value))}
                     style={{flex:1}}/>
                   <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
-                    <input type="number" min={480} max={900} step={10}
-                      value={windowHeight}
+                    <input type="number" min={480} max={900}
+                      value={draftHeight}
                       onChange={(e)=>{
-                        const v = Math.max(480, Math.min(900, Number(e.target.value) || 780));
-                        onUpdateWindowHeight(v);
+                        const raw = e.target.value;
+                        setDraftHeight(raw === '' ? '' : Number(raw));
                       }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitHeight(draftHeight); }}
                       style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
                     <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
                   </div>
                 </div>
-                <button onClick={()=>onUpdateWindowHeight(780)}
-                  style={{marginTop:8,width:'100%',padding:'6px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
-                  기본값(780px)으로
-                </button>
+                <div style={{display:'flex',gap:6,marginTop:10}}>
+                  <button onClick={()=>commitHeight(draftHeight)}
+                    style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                    저장
+                  </button>
+                  <button onClick={()=>commitHeight(700)}
+                    style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
+                    기본값(700px)
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -3157,6 +3417,7 @@ const { useState: pmUseState } = React;
 function PreviewModal({ state, onClose }){
   const [screen, setScreen] = pmUseState('hero'); // hero | detail
   const [activeSection, setActiveSection] = pmUseState(state.activeSectionId || (state.sidebar||[])[0]?.id);
+  const windowHeight = state.popup?.windowHeight ?? 700;
 
   const showDetail = () => { setScreen('detail'); setActiveSection(state.activeSectionId || (state.sidebar||[])[0]?.id); };
   const showHero = () => setScreen('hero');
@@ -3174,7 +3435,7 @@ function PreviewModal({ state, onClose }){
       </button>
 
       <div style={{maxWidth:1180, width:'100%', margin:'0 auto'}}>
-        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:'min(780px, 88vh)', display:'flex', flexDirection:'column', position:'relative'}}>
+        <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
           <button onClick={onClose}
             style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
           {screen === 'detail' && (

@@ -113,7 +113,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
-  const windowHeight = state.popup?.windowHeight ?? 780; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -216,7 +216,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDrop={handleContainerDrop}
           >
             <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
-            <div style={{flex:1, minHeight:0, overflowY:'auto', padding:'12px 14px'}}>
+            <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
                   <div style={{fontSize:32, marginBottom:12}}>🖼️</div>
@@ -280,6 +280,13 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
                 </div>
               )}
               {renderComponentList()}
+              {editing && componentList.length === 1 && activeSec?.kind !== 'cover' && state.components[componentList[0]]?.type === 'section-heading' && (
+                <div style={{marginTop:14, padding:'26px 20px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
+                  <div style={{fontSize:26, marginBottom:8}}>📥</div>
+                  <div style={{fontSize:13, fontWeight:700, color:'var(--sub)', marginBottom:4}}>아래에 컴포넌트를 추가하세요</div>
+                  <div style={{fontSize:11.5}}>좌측 팔레트에서 원하는 컴포넌트를 끌어다 놓거나 클릭해서 추가할 수 있어요.</div>
+                </div>
+              )}
             </div>
           </div>
           <PopupFooter state={state}/>

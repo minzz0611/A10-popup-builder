@@ -17,6 +17,18 @@ function hexToRgba(hex, alpha){
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// ------- hex color -> lighter tint (blended toward white), used to derive a
+// pale card background from a single picked "theme" color -------
+function lightenHex(hex, amount){
+  const h = String(hex||'#000000').replace('#','');
+  const full = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(full.substring(0,2),16) || 0;
+  const g = parseInt(full.substring(2,4),16) || 0;
+  const b = parseInt(full.substring(4,6),16) || 0;
+  const mix = (c) => Math.round(c + (255-c)*amount);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
 // ------- Editable Text primitive -------
 function ET({ tag = 'span', value, onChange, editing, className, style, multiline, placeholder }){
   const ref = rUseRef(null);
@@ -46,7 +58,6 @@ function ET({ tag = 'span', value, onChange, editing, className, style, multilin
       suppressContentEditableWarning
       onBlur={handleBlur}
       onKeyDown={handleKey}
-      onClick={(e) => { if(editing) e.stopPropagation(); }}
       data-placeholder={placeholder}
     >{value || (editing ? '' : '')}</Tag>
   );
@@ -359,6 +370,7 @@ function NumberedList({ data, editing, onChange }){
 function FeatureCards({ data, editing, onChange }){
   const d = data;
   const cols = d.cols || 2;
+  const centered = d.align === 'center';
   const upd = (i, k, v) => {
     const items = [...(d.items||[])];
     items[i] = { ...items[i], [k]: v };
@@ -367,7 +379,7 @@ function FeatureCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:16}}>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,padding:'18px 18px 16px',position:'relative',overflow:'hidden',background:'#fff',boxShadow:'0 2px 10px rgba(20,30,70,.05)'}}>
+        <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,padding:'18px 18px 16px',position:'relative',overflow:'hidden',background:'#fff',boxShadow:'0 2px 10px rgba(20,30,70,.05)',textAlign: centered ? 'center' : 'left'}}>
           <div style={{position:'absolute',top:0,left:0,right:0,height:4,background:it.color||'#2F6BFF'}}/>
           <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing} style={{fontSize:22,marginBottom:8,display:'block'}}/>
           <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:6}}/>
@@ -587,6 +599,7 @@ function HighlightBox({ data, editing, onChange }){
 // ============================================================
 function RoleCards({ data, editing, onChange }){
   const d = data;
+  const centered = d.align === 'center';
   const upd = (i, k, v) => {
     const items = [...(d.items||[])];
     items[i] = { ...items[i], [k]: v };
@@ -603,22 +616,29 @@ function RoleCards({ data, editing, onChange }){
   const iconBgs = ['var(--grad)','linear-gradient(90deg,#2FA8FF,#7B5CFA)','linear-gradient(90deg,#12B886,#2FA8FF)'];
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${d.items?.length||2},1fr)`,gap:14}}>
-      {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{borderRadius:14,padding:'16px 18px',background: it.bgColor || backgrounds[i%backgrounds.length],border:'1px solid var(--line)'}}>
-          <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background: iconBgs[i%iconBgs.length]}}>
-            <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
+      {(d.items||[]).map((it,i)=>{
+        // 테마 색상 하나만 고르면: 카드 배경은 그 색을 흰색과 섞어 연하게, 아이콘 배경은 그 색 그대로(진하게) 사용
+        const theme = it.themeColor;
+        const cardBg = theme ? lightenHex(theme, .85) : backgrounds[i%backgrounds.length];
+        const iconBg = theme || iconBgs[i%iconBgs.length];
+        return (
+          <div key={i} style={{borderRadius:14,padding:'16px 18px',background:cardBg,border:'1px solid var(--line)',textAlign: centered ? 'center' : 'left'}}>
+            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background:iconBg, margin: centered ? '0 auto 8px' : '0 0 8px'}}>
+              <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
+            </div>
+            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
+            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
+            {/* 불릿 목록은 카드 정렬과 무관하게 항상 좌측 정렬 */}
+            <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7,textAlign:'left'}}>
+              {(it.bullets||[]).map((b,li)=>(
+                <li key={li}>
+                  <ET tag="span" value={b} onChange={(v)=>updList(i,li,v)} editing={editing}/>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
-          <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
-          <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7}}>
-            {(it.bullets||[]).map((b,li)=>(
-              <li key={li}>
-                <ET tag="span" value={b} onChange={(v)=>updList(i,li,v)} editing={editing}/>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -656,6 +676,46 @@ function TextBlock({ data, editing, onChange }){
 }
 
 // ============================================================
+// 13. SHAPE — 텍스트를 담는 도형 (사각형/둥근사각형/알약형) + 앞머리 배지 옵션
+// ============================================================
+function ShapeBlock({ data, editing, onChange }){
+  const d = data;
+  const upd = (patch) => onChange({ ...d, ...patch });
+  const updBadge = (patch) => onChange({ ...d, badge: { ...(d.badge||{}), ...patch } });
+
+  const radius = d.shapeType === 'pill' ? 999 : d.shapeType === 'rect' ? 0 : 14;
+  const centered = d.align === 'center';
+
+  return (
+    <div style={{display:'flex', justifyContent: centered ? 'center' : 'flex-start'}}>
+      <div style={{
+        display:'inline-flex', alignItems:'center', gap:10, maxWidth:'100%',
+        padding: d.shapeType === 'pill' ? '10px 22px' : '14px 20px',
+        borderRadius: radius,
+        background: d.bgColor || '#EFF7FF',
+      }}>
+        {d.badge?.enabled && (
+          <span style={{
+            flex:'none', boxSizing:'border-box',
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+            minWidth:26, height:26, padding:'0 9px',
+            borderRadius:999,
+            background: d.badge.bgColor || '#1C90FB',
+            color: d.badge.textColor || '#fff',
+            fontSize:12.5, fontWeight:800, lineHeight:1,
+          }}>
+            <ET tag="span" value={d.badge.content} onChange={(v)=>updBadge({content:v})} editing={editing} placeholder="1"/>
+          </span>
+        )}
+        <ET tag="span" value={d.text} onChange={(v)=>upd({text:v})} editing={editing} multiline
+          placeholder="내용을 입력하세요"
+          style={{color: d.textColor || '#1C3050', fontSize:14, fontWeight:600, lineHeight:1.5}}/>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Registry
 // ============================================================
 window.RENDERERS = {
@@ -672,6 +732,7 @@ window.RENDERERS = {
   'role-cards': RoleCards,
   'section-heading': SectionHeading,
   'text-block': TextBlock,
+  'shape': ShapeBlock,
 };
 
 window.COMPONENT_META = [
@@ -680,6 +741,7 @@ window.COMPONENT_META = [
   { type:'kpi-grid', label:'KPI 카드', icon:'Grid', group:'데이터', desc:'수치 지표 카드 그리드' },
   { type:'table', label:'표 / 테이블', icon:'Table', group:'데이터', desc:'행과 열의 데이터' },
   { type:'text-block', label:'일반 텍스트', icon:'Type', group:'컨텐츠', desc:'자유롭게 입력하는 본문 텍스트' },
+  { type:'shape', label:'도형 (텍스트 입력)', icon:'Square', group:'컨텐츠', desc:'텍스트를 담는 도형 · 앞머리 배지 옵션' },
   { type:'card-grid', label:'카드 그리드', icon:'Layers', group:'컨텐츠', desc:'2~4열 일반 카드' },
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
@@ -693,59 +755,63 @@ window.COMPONENT_META = [
 // Default data factories - what a fresh component looks like
 window.DEFAULT_DATA = {
   hero: () => ({
-    badge:'Amaranth10 × ERP AI 서비스', title:'AI 분석리포트',
-    subtitle:'나에게 필요한 데이터만 골라, AI가 자동으로 구성하는 맞춤형 경영 분석 대시보드',
-    body:'회계·자금·인사·영업·구매 등 업무 데이터를 AI가 자동으로 분석해 KPI·차트·표를 즉시 구성합니다. 담당자는 원하는 데이터 항목만 선택하면 됩니다.',
-    ctaLabel:'상세내용 보기', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
-    showVideoBtn:false, videoBtnLabel:'동영상 보기',
+    badge:'배지 텍스트를 입력하세요', title:'제목을 입력하세요',
+    subtitle:'부제목을 입력하세요',
+    body:'본문 설명을 입력하세요. 이 영역에는 서비스나 기능에 대한 상세 소개 문구가 들어갑니다.',
+    ctaLabel:'버튼 텍스트 입력', showCta:true, showImage:true, image:{ src:'', alt:'', width:640 },
+    showVideoBtn:false, videoBtnLabel:'버튼 텍스트 입력',
   }),
   'kpi-grid': () => ({ cols:3, items:[
-    {label:'매출액',value:'₩482M',delta:'+12.3%'},
-    {label:'영업이익',value:'₩89M',delta:'+8.1%'},
-    {label:'거래 건수',value:'1,284',delta:'+204'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
+    {label:'지표명을 입력하세요',value:'수치 값 입력',delta:'증감률 입력'},
   ]}),
   'card-grid': () => ({ cols:3, items:[
-    {title:'첫번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#2F6BFF',badge:''},
-    {title:'두번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#7B5CFA',badge:''},
-    {title:'세번째 카드',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#12B886',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#2882FF',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#5601FF',badge:''},
+    {title:'카드 제목을 입력하세요',desc:'카드에 표시할 설명 문구를 입력하세요.',color:'#1E3282',badge:''},
   ]}),
-  'process-flow': () => ({ tone:'blue', trackLabel:'전체 프로세스 · AI분석리포트 생성 흐름', steps:[
-    {title:'메뉴 진입',desc:'서비스 메뉴에서 신규 생성을 선택합니다.'},
-    {title:'데이터 선택',desc:'분석할 모듈 및 데이터 항목을 선택합니다.'},
-    {title:'AI 자동 생성',desc:'AI가 KPI·차트·표를 자동으로 구성합니다.'},
-    {title:'리포트 확인',desc:'생성된 대시보드와 인사이트를 확인합니다.'},
+  'process-flow': () => ({ tone:'blue', trackLabel:'전체 프로세스 흐름을 설명하는 문구를 입력하세요', steps:[
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
+    {title:'단계 제목을 입력하세요',desc:'해당 단계에 대한 설명을 입력하세요.'},
   ]}),
   'numbered-list': () => ({ items:[
-    {title:'데이터 수집',tag:'',desc:'선택한 데이터 소스에서 원본 행·열을 조회합니다.',example:''},
-    {title:'구조 분석',tag:'AI LLM',desc:'AI가 컬럼 구조와 데이터 특성을 자동 분류합니다.',example:'예) 매출액 합계 → KPI'},
-    {title:'대시보드 생성',tag:'',desc:'분류 결과를 바탕으로 최적의 KPI·차트·표를 구성합니다.',example:''},
+    {title:'단계명을 입력하세요',tag:'',desc:'단계에 대한 설명을 입력하세요.',example:''},
+    {title:'단계명을 입력하세요',tag:'태그(선택)',desc:'단계에 대한 설명을 입력하세요.',example:'예시 문구(선택)'},
+    {title:'단계명을 입력하세요',tag:'',desc:'단계에 대한 설명을 입력하세요.',example:''},
   ]}),
-  'feature-cards': () => ({ cols:2, items:[
-    {icon:'🤖',title:'AI 자동 대시보드 생성',desc:'분석할 데이터만 선택하면 초 단위 내에 완성된 대시보드를 제공합니다.',color:'#2F6BFF'},
-    {icon:'🎯',title:'담당자 맞춤형 리포트',desc:'각 업무 담당자에게 꼭 맞는 리포트를 자동으로 구성합니다.',color:'#7B5CFA'},
-    {icon:'💬',title:'대화형 편집',desc:'자연어로 수정 요청을 입력하면 AI가 즉시 반영합니다.',color:'#12B886'},
-    {icon:'📄',title:'보고서 변환·공유',desc:'PDF/문서로 즉시 변환하여 상위 보고자와 공유합니다.',color:'#FF7A45'},
+  'feature-cards': () => ({ cols:2, align:'left', items:[
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#2882FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#8947FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#B932FF'},
+    {icon:'✨',title:'특징 제목을 입력하세요',desc:'특징에 대한 설명을 입력하세요.',color:'#1E3282'},
   ]}),
   'table': () => ({
-    headers:['모듈','데이터명','설명'],
+    headers:['항목명','항목명','설명'],
     rows:[
-      ['회계관리','원가보고서','제품매출원가 데이터를 항목별로 분석합니다.'],
-      ['회계관리','자금현황','자금 계좌별 입출금 및 잔액 현황을 분석합니다.'],
-      ['물류관리','주문현황','고객사별·품목별 주문 접수 현황을 분석합니다.'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
+      ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#1C90FB', width:1 },
-    emphasis:{ enabled:false, color:'#1C90FB' } }),
+    border:{ enabled:false, color:'#2882FF', width:1 },
+    emphasis:{ enabled:false, color:'#2882FF' } }),
   'video-cards': () => ({ cols:2, items:[
-    {tag:'DEMO 01',title:'실시간 분석 시연',desc:'실제 사용 화면으로 서비스 동작 방식을 확인하세요.',thumb:''},
-    {tag:'DEMO 02',title:'파일 첨부 분석',desc:'외부 파일을 업로드하여 리포트를 생성하는 과정입니다.',thumb:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
   ]}),
-  'highlight-box': () => ({ icon:'💡', title:'꼭 알아두세요', body:'중요한 안내 사항이나 강조하고 싶은 내용을 여기에 입력하세요.' }),
-  'role-cards': () => ({ items:[
-    {icon:'🧑‍💼',title:'업무 담당자',desc:'담당 업무 영역에 맞는 데이터를 선택하여 맞춤형 리포트를 구성합니다.',bullets:['담당 데이터 실시간 분석','업무 흐름과 수치 추이 파악','팀 내 리포트 공유']},
-    {icon:'📊',title:'의사결정자',desc:'회사 전반의 핵심 지표를 한 화면에서 조망하여 신속한 의사결정을 지원합니다.',bullets:['핵심 KPI 종합 조망','부서·제품별 비교 분석','즉시 보고 자료 생성']},
+  'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
+  'role-cards': () => ({ align:'left', items:[
+    {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
+    {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
   ]}),
-  'section-heading': () => ({ title:'섹션 제목', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
-  'text-block': () => ({ body:'여기에 내용을 입력하세요.', align:'left', size:13 }),
+  'section-heading': () => ({ title:'섹션 제목을 입력하세요', desc:'섹션에 대한 부연 설명을 입력하세요.' }),
+  'text-block': () => ({ body:'본문 내용을 입력하세요.', align:'left', size:13 }),
+  'shape': () => ({
+    text:'도형 안에 들어갈 텍스트를 입력하세요', shapeType:'rounded', bgColor:'#C5E1FF', textColor:'#0E1941', align:'left',
+    badge:{ enabled:false, content:'1', bgColor:'#2882FF', textColor:'#FFFFFF' },
+  }),
 };

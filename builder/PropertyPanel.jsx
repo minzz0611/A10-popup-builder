@@ -81,18 +81,103 @@ window.DESIGN_PALETTE = [
     { name:'Color 07', hex:'#49C8F2' }, { name:'Color 08', hex:'#53A0FE' },
     { name:'Color 09', hex:'#8B8BFF' }, { name:'Color 10', hex:'#BC8FFF' },
   ]},
+  { group:'Gray 1', colors:[
+    { name:'Gray1 01', hex:'#FFFFFF' }, { name:'Gray1 02', hex:'#F2F2F2' },
+    { name:'Gray1 03', hex:'#D8D8D8' }, { name:'Gray1 04', hex:'#BFBFBF' },
+    { name:'Gray1 05', hex:'#A5A5A5' }, { name:'Gray1 06', hex:'#7F7F7F' },
+  ]},
+  { group:'Gray 2', colors:[
+    { name:'Gray2 01', hex:'#000000' }, { name:'Gray2 02', hex:'#7F7F7F' },
+    { name:'Gray2 03', hex:'#595959' }, { name:'Gray2 04', hex:'#3F3F3F' },
+    { name:'Gray2 05', hex:'#262626' }, { name:'Gray2 06', hex:'#0C0C0C' },
+  ]},
+  { group:'Blue 1', colors:[
+    { name:'Blue1 01', hex:'#C5E1FF' }, { name:'Blue1 02', hex:'#97C9FE' },
+    { name:'Blue1 03', hex:'#53A6FF' }, { name:'Blue1 04', hex:'#006DE2' },
+    { name:'Blue1 05', hex:'#003671' }, { name:'Blue1 06', hex:'#00152D' },
+  ]},
+  { group:'Blue 2', colors:[
+    { name:'Blue2 01', hex:'#5DAEFF' }, { name:'Blue2 02', hex:'#DEEEFF' },
+    { name:'Blue2 03', hex:'#BEDEFF' }, { name:'Blue2 04', hex:'#9DCEFF' },
+    { name:'Blue2 05', hex:'#0582FF' }, { name:'Blue2 06', hex:'#0057AE' },
+  ]},
+  { group:'Blue 3', colors:[
+    { name:'Blue3 01', hex:'#2882FF' }, { name:'Blue3 02', hex:'#D4E6FF' },
+    { name:'Blue3 03', hex:'#A9CDFE' }, { name:'Blue3 04', hex:'#7DB4FF' },
+    { name:'Blue3 05', hex:'#005CDD' }, { name:'Blue3 06', hex:'#003D93' },
+  ]},
+  { group:'Indigo', colors:[
+    { name:'Indigo 01', hex:'#374BFF' }, { name:'Indigo 02', hex:'#D7DBFF' },
+    { name:'Indigo 03', hex:'#AFB7FF' }, { name:'Indigo 04', hex:'#8793FF' },
+    { name:'Indigo 05', hex:'#0017E8' }, { name:'Indigo 06', hex:'#000F9B' },
+  ]},
+  { group:'Navy', colors:[
+    { name:'Navy 01', hex:'#1E3282' }, { name:'Navy 02', hex:'#C6CEF1' },
+    { name:'Navy 03', hex:'#8D9EE4' }, { name:'Navy 04', hex:'#546ED7' },
+    { name:'Navy 05', hex:'#162561' }, { name:'Navy 06', hex:'#0E1941' },
+  ]},
+  { group:'Purple 1', colors:[
+    { name:'Purple1 01', hex:'#5601FF' }, { name:'Purple1 02', hex:'#DDCCFF' },
+    { name:'Purple1 03', hex:'#BB99FF' }, { name:'Purple1 04', hex:'#9966FF' },
+    { name:'Purple1 05', hex:'#4000C0' }, { name:'Purple1 06', hex:'#2A0080' },
+  ]},
+  { group:'Purple 2', colors:[
+    { name:'Purple2 01', hex:'#8947FF' }, { name:'Purple2 02', hex:'#E7DAFE' },
+    { name:'Purple2 03', hex:'#CFB5FF' }, { name:'Purple2 04', hex:'#B890FF' },
+    { name:'Purple2 05', hex:'#5700F4' }, { name:'Purple2 06', hex:'#3A00A3' },
+  ]},
+  { group:'Magenta', colors:[
+    { name:'Magenta 01', hex:'#B932FF' }, { name:'Magenta 02', hex:'#F1D6FF' },
+    { name:'Magenta 03', hex:'#E3ADFF' }, { name:'Magenta 04', hex:'#D583FF' },
+    { name:'Magenta 05', hex:'#9600E4' }, { name:'Magenta 06', hex:'#640098' },
+  ]},
 ];
 
 function ColorPicker({ value, onChange }){
   const [open, setOpen] = pUseState(false);
   const [customHex, setCustomHex] = pUseState(value || '#000000');
+  const [coords, setCoords] = pUseState(null); // {top,left,width,maxHeight} - fixed-position, computed from the trigger button
   const wrapRef = React.useRef(null);
+  const btnRef = React.useRef(null);
+  const panelRef = React.useRef(null);
+
+  const computeCoords = () => {
+    const btn = btnRef.current;
+    if(!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const panelWidth = 284;
+    let left = rect.left;
+    if(left + panelWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - panelWidth - 8);
+    const spaceBelow = window.innerHeight - rect.bottom - 14;
+    const spaceAbove = rect.top - 14;
+    let top, maxHeight;
+    if(spaceBelow < 220 && spaceAbove > spaceBelow){
+      maxHeight = Math.min(400, spaceAbove);
+      top = Math.max(8, rect.top - 6 - maxHeight);
+    } else {
+      maxHeight = Math.min(400, Math.max(160, spaceBelow));
+      top = rect.bottom + 6;
+    }
+    setCoords({ top, left, width: panelWidth, maxHeight });
+  };
 
   React.useEffect(()=>{
     if(!open) return;
-    const onDoc = (e) => { if(wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    computeCoords();
+    const onDoc = (e) => {
+      if(wrapRef.current && wrapRef.current.contains(e.target)) return;
+      if(panelRef.current && panelRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onReposition = () => computeCoords();
     document.addEventListener('mousedown', onDoc);
-    return ()=>document.removeEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onReposition, true);
+    window.addEventListener('resize', onReposition);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onReposition, true);
+      window.removeEventListener('resize', onReposition);
+    };
   }, [open]);
 
   React.useEffect(()=>{ if(open) setCustomHex(value || '#000000'); }, [open]);
@@ -112,9 +197,46 @@ function ColorPicker({ value, onChange }){
     } catch(e) { /* 사용자가 취소함 */ }
   };
 
+  const panel = (open && coords) ? ReactDOM.createPortal(
+    <div ref={panelRef} style={{position:'fixed',zIndex:9999,top:coords.top,left:coords.left,width:coords.width,maxHeight:coords.maxHeight,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
+      {window.DESIGN_PALETTE.map(g => (
+        <div key={g.group} style={{marginBottom:10}}>
+          <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
+            {g.colors.map(c => (
+              <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
+                onClick={()=>{ onChange(c.hex); setOpen(false); }}
+                style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
+        <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
+            onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
+            title="색상 선택기"
+            style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
+          <input type="text" value={customHex}
+            onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
+            placeholder="#RRGGBB"
+            style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
+          {!!window.EyeDropper && (
+            <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
+              style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              💧
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={wrapRef} style={{position:'relative'}}>
-      <button onClick={()=>setOpen(o=>!o)} type="button"
+      <button ref={btnRef} onClick={()=>setOpen(o=>!o)} type="button"
         style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'7px 10px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',cursor:'pointer'}}>
         <span style={{width:18,height:18,borderRadius:5,flex:'none',background:value||'#fff',border:'1px solid rgba(0,0,0,.12)'}}/>
         <span style={{fontSize:12.5,color:'var(--ink)',fontWeight:600,flex:1,textAlign:'left',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
@@ -122,42 +244,7 @@ function ColorPicker({ value, onChange }){
         </span>
         <span style={{fontSize:10.5,color:'var(--mute)'}}>{value||''}</span>
       </button>
-
-      {open && (
-        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,width:284,maxHeight:400,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
-          {window.DESIGN_PALETTE.map(g => (
-            <div key={g.group} style={{marginBottom:10}}>
-              <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
-                {g.colors.map(c => (
-                  <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
-                    onClick={()=>{ onChange(c.hex); setOpen(false); }}
-                    style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
-            <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <input type="color" value={/^#([0-9a-f]{6})$/i.test(customHex) ? customHex : '#000000'}
-                onChange={(e)=>{ setCustomHex(e.target.value); onChange(e.target.value); }}
-                title="색상 선택기"
-                style={{width:32,height:32,padding:0,border:'1px solid var(--line)',borderRadius:6,cursor:'pointer',flex:'none'}}/>
-              <input type="text" value={customHex}
-                onChange={(e)=>{ setCustomHex(e.target.value); applyHex(e.target.value); }}
-                placeholder="#RRGGBB"
-                style={{flex:1,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontFamily:'monospace',color:'var(--ink)'}}/>
-              {!!window.EyeDropper && (
-                <button type="button" onClick={pickWithEyedropper} title="스포이드로 화면에서 색 추출"
-                  style={{flex:'none',width:32,height:32,border:'1px solid var(--line)',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  💧
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {panel}
     </div>
   );
 }
@@ -411,6 +498,7 @@ function CompEditor({ comp, onChange }){
           <Segmented value={d.cols||2} onChange={(v)=>set('cols',v)}
             options={[{value:2,label:'2열'},{value:3,label:'3열'},{value:4,label:'4열'}]}/>
         </Field>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="카드 내용 가운데 정렬"/></Field>
         <Field label="특징">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="특징"
             defaultItem={{icon:'✨',title:'제목',desc:'설명',color:'#2F6BFF'}}
@@ -658,9 +746,44 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'shape'){
+    return (
+      <div>
+        <Field label="내용"><TextInput value={d.text} onChange={(v)=>set('text',v)} multiline rows={2}/></Field>
+        <Field label="도형 형태">
+          <Segmented value={d.shapeType||'rounded'} onChange={(v)=>set('shapeType',v)}
+            options={[{value:'rect',label:'사각형'},{value:'rounded',label:'둥근 사각형'},{value:'pill',label:'알약형'}]}/>
+        </Field>
+        <Field label="배경 색상"><ColorPicker value={d.bgColor} onChange={(hex)=>set('bgColor',hex)}/></Field>
+        <Field label="텍스트 색상"><ColorPicker value={d.textColor} onChange={(hex)=>set('textColor',hex)}/></Field>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="컴포넌트 가운데 정렬"/></Field>
+
+        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>앞머리 배지</div>
+        <Field label=" ">
+          <Toggle value={!!d.badge?.enabled} onChange={(v)=>onChange({...d, badge:{...(d.badge||{}), enabled:v}})} label="도형 앞에 배지 추가"/>
+        </Field>
+        {d.badge?.enabled && (
+          <>
+            <Field label="배지 내용" hint="숫자·아이콘·기호·텍스트 모두 가능하며, 길이에 따라 너비가 자동으로 늘어나요.">
+              <TextInput value={d.badge?.content} onChange={(v)=>onChange({...d, badge:{...(d.badge||{}), content:v}})} placeholder="1"/>
+            </Field>
+            <Field label="배지 배경 색상">
+              <ColorPicker value={d.badge?.bgColor} onChange={(hex)=>onChange({...d, badge:{...(d.badge||{}), bgColor:hex}})}/>
+            </Field>
+            <Field label="배지 텍스트 색상">
+              <ColorPicker value={d.badge?.textColor} onChange={(hex)=>onChange({...d, badge:{...(d.badge||{}), textColor:hex}})}/>
+            </Field>
+          </>
+        )}
+      </div>
+    );
+  }
+
   if(t === 'role-cards'){
     return (
       <div>
+        <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="카드 내용 가운데 정렬"/></Field>
+        <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:8,lineHeight:1.5}}>불릿 항목은 가운데 정렬을 켜도 항상 왼쪽 정렬로 표시돼요.</div>
         <Field label="역할 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="역할" maxItems={3}
             defaultItem={{icon:'👤',title:'역할',desc:'설명',bullets:['항목 1','항목 2']}}
@@ -669,12 +792,28 @@ function CompEditor({ comp, onChange }){
                 <TextInput value={it.icon} onChange={(v)=>upd({icon:v})} placeholder="아이콘"/>
                 <TextInput value={it.title} onChange={(v)=>upd({title:v})} placeholder="역할명"/>
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
-                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목 (한 줄에 하나씩)</div>
-                <TextInput value={(it.bullets||[]).join('\n')} onChange={(v)=>upd({bullets: v.split('\n').filter(x=>x.trim())})} multiline rows={4}/>
-                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>배경 색상</div>
-                <ColorPicker value={it.bgColor} onChange={(hex)=>upd({bgColor:hex})}/>
-                {it.bgColor && (
-                  <button type="button" onClick={()=>upd({bgColor:''})}
+
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:2}}>불릿 항목</div>
+                {(it.bullets||[]).map((b, bi) => (
+                  <div key={bi} style={{display:'flex',gap:4,alignItems:'center'}}>
+                    <div style={{flex:1}}>
+                      <TextInput value={b} placeholder={`항목 ${bi+1}`}
+                        onChange={(v)=>{ const bullets=[...(it.bullets||[])]; bullets[bi]=v; upd({bullets}); }}/>
+                    </div>
+                    <button type="button" onClick={()=>{ const bullets=(it.bullets||[]).filter((_,idx)=>idx!==bi); upd({bullets}); }}
+                      style={{flex:'none',width:26,height:26,border:'1px solid var(--line)',borderRadius:6,background:'#fff',color:'var(--danger)',cursor:'pointer',fontSize:12}}>✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={()=>upd({bullets:[...(it.bullets||[]), '']})}
+                  style={{padding:'6px 8px',border:'1px dashed var(--line)',borderRadius:7,background:'#fff',fontSize:11,fontWeight:700,color:'var(--blue-dark)',cursor:'pointer'}}>
+                  + 불릿 항목 추가
+                </button>
+
+                <div style={{fontSize:11,color:'var(--mute)',marginTop:6}}>테마 색상</div>
+                <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:2,lineHeight:1.5}}>색을 하나 고르면 카드 배경은 연하게, 아이콘 배경은 그 색 그대로 진하게 적용돼요.</div>
+                <ColorPicker value={it.themeColor} onChange={(hex)=>upd({themeColor:hex})}/>
+                {it.themeColor && (
+                  <button type="button" onClick={()=>upd({themeColor:''})}
                     style={{fontSize:10.5,color:'var(--mute)',background:'none',border:'none',cursor:'pointer',textAlign:'left',padding:0}}>
                     기본 배경으로 되돌리기
                   </button>
@@ -693,6 +832,12 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
+  const itemRefs = React.useRef({});
+  React.useEffect(() => {
+    if(selectedId && itemRefs.current[selectedId]){
+      itemRefs.current[selectedId].scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }
+  }, [selectedId]);
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s => s.id === activeSectionId);
   const activeTab = activeSec?.tabs?.find(t => t.id === activeTabId) || null;
   const screenLabel = activeSectionId === null
@@ -722,7 +867,7 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
           const isLast = idx === componentList.length - 1;
           const locked = isProtected && isProtected(cid);
           return (
-            <div key={cid} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
+            <div key={cid} ref={(el)=>{ itemRefs.current[cid]=el; }} style={{marginBottom:6,border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background: expanded ? '#fff' : '#FAFBFC', boxShadow: expanded ? '0 2px 8px rgba(30,50,120,.06)' : 'none'}}>
               <button onClick={()=>onSelect(expanded ? null : cid)}
                 style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'10px 12px',border:'none',background:'transparent',cursor:'pointer',textAlign:'left'}}>
                 <span style={{flex:'none',fontSize:11,color:'var(--mute)',fontWeight:700,width:14,textAlign:'center'}}>{idx+1}</span>

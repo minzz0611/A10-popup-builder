@@ -199,8 +199,24 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       if((sidebar[i].group||'메뉴') === group){ insertAt = i + 1; break; }
     }
     const id = window.uid('sec');
-    sidebar.splice(insertAt, 0, { id, label:`섹션 ${num}`, group, kind:'feature', components: [] });
-    onProjectUpdate({ sidebar, activeSectionId: id });
+    // 새 섹션엔 기본으로 '섹션 헤딩' 컴포넌트를 하나 넣어둔다 (수정·삭제 자유로운 일반 컴포넌트)
+    const headingId = window.uid('c');
+    const components = { ...state.components, [headingId]: { id:headingId, type:'section-heading', data: window.DEFAULT_DATA['section-heading'](), style:{spanCols:12} } };
+    sidebar.splice(insertAt, 0, { id, label:`섹션 ${num}`, group, kind:'feature', components: [headingId] });
+    onProjectUpdate({ sidebar, components, activeSectionId: id });
+  };
+
+  // 기존 그룹과 겹치지 않는 완전히 새로운 1뎁스(그룹+첫 섹션)를 추가
+  const addNewGroup = () => {
+    const existingGroups = new Set((state.sidebar||[]).map(s => s.group || '메뉴'));
+    let name = '새 그룹', n = 2;
+    while(existingGroups.has(name)){ name = `새 그룹 ${n}`; n++; }
+    const sidebar = [...(state.sidebar||[])];
+    const id = window.uid('sec');
+    const headingId = window.uid('c');
+    const components = { ...state.components, [headingId]: { id:headingId, type:'section-heading', data: window.DEFAULT_DATA['section-heading'](), style:{spanCols:12} } };
+    sidebar.push({ id, label:'섹션 1', group:name, kind:'feature', components:[headingId] });
+    onProjectUpdate({ sidebar, components, activeSectionId:id });
   };
 
   const iconBtn = {border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:13,borderRadius:5,flex:'none',display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22};
@@ -214,7 +230,14 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
       <span style={{fontSize:11,color:'var(--mute)'}}>{state.heroComponents?.length||0}</span>
     </button>
   );
-  rows.push(<div key="lbl" style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',padding:'2px 4px 4px'}}>목록</div>);
+  rows.push(
+    <div key="lbl" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'2px 2px 4px'}}>
+      <span style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em'}}>목록</span>
+      <button title="새 항목 추가" onClick={addNewGroup} style={iconBtn}
+        onMouseEnter={(e)=>e.currentTarget.style.background='var(--panel)'}
+        onMouseLeave={(e)=>e.currentTarget.style.background='none'}>+</button>
+    </div>
+  );
 
   // ------- 같은 group 값을 공유하는 섹션끼리 묶기 (0뎁스: 그룹, 1뎁스: 섹션, 2뎁스: 하위 탭) -------
   const groupOrder = [];
