@@ -261,6 +261,14 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
   };
 
+  // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
+  const handleUpdateCustomHtml = (id, html) => {
+    commit(prev => ({
+      ...prev,
+      components: { ...prev.components, [id]: { ...prev.components[id], customHtml: html } }
+    }));
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -576,6 +584,7 @@ function App(){
             onSelect={setSelectedId}
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}
+            onUpdateCustomHtml={handleUpdateCustomHtml}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}

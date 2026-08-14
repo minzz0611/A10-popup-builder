@@ -207,13 +207,17 @@ function HeroBlock({ data, editing, onChange }){
   const upd = (k, v) => onChange({ ...d, [k]: v });
   return (
     <section style={{padding:'30px 56px 22px', textAlign:'center', background:'radial-gradient(700px 260px at 50% -60px, #eef1ff 0%, rgba(255,255,255,0) 70%)'}}>
-      <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
-        <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
-      </div>
+      {(d.badge || editing) && (
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
+          <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
+        </div>
+      )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
         style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
-      <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
-        style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
+      {(d.subtitle || editing) && (
+        <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
+          style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
+      )}
       <ET tag="p" value={d.body} onChange={(v)=>upd('body',v)} editing={editing} multiline
         style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,maxWidth:600,margin:'0 auto 14px'}}/>
       {(d.showCta !== false || d.showVideoBtn) && (
@@ -445,22 +449,25 @@ function ImageBlock({ data, editing, onChange }){
   const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
 
   // 강조(emphasis) 시 굵기·네온 적용범위는 고정값 — 색상만 바꿀 수 있다.
-  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~3px로 제한한다.
-  const EMPHASIS_BORDER_WIDTH = 4;
-  const EMPHASIS_GLOW_SPREAD = 16;
+  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~2px로 제한한다.
+  const EMPHASIS_BORDER_WIDTH = 3;
+  const EMPHASIS_GLOW_SPREAD = 5; // 기존(16px)의 약 1/3
   const emphasisOn = !!d.emphasis?.enabled;
   const borderOn = !!d.border?.enabled;
-  const baseBorderWidth = Math.max(1, Math.min(3, d.border?.width || 1));
-  const baseBorderColor = d.border?.color || '#1C90FB';
+  const baseBorderWidth = Math.max(1, Math.min(2, d.border?.width || 1));
+  const baseBorderColor = d.border?.color || '#D9D9D9';
   const emphasisColor = d.emphasis?.color || '#1C90FB';
   let frameExtra = {};
   if(emphasisOn){
     frameExtra = {
       border: `${EMPHASIS_BORDER_WIDTH}px solid ${emphasisColor}`,
-      boxShadow: `0 0 0 2px ${hexToRgba(emphasisColor,.18)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.55)}`,
+      boxShadow: `0 0 0 1px ${hexToRgba(emphasisColor,.08)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.2)}`,
     };
   } else if(borderOn){
-    frameExtra = { border: `${baseBorderWidth}px solid ${baseBorderColor}` };
+    frameExtra = {
+      border: `${baseBorderWidth}px solid ${baseBorderColor}`,
+      boxShadow: `0 0 4px 1px ${hexToRgba(baseBorderColor,.3)}`,
+    };
   }
 
   const onFile = (e) => {
@@ -552,7 +559,7 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
           <div style={{background:'#161B26',height:150,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
-            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)'}}>
+            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: (it.tag || editing) ? 'inline-block' : 'none'}}>
               <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
             </span>
             <div style={{width:52,height:52,borderRadius:'50%',background:'var(--grad)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:16,boxShadow:'0 8px 20px rgba(80,90,255,.4)'}}>▶</div>
@@ -623,11 +630,11 @@ function RoleCards({ data, editing, onChange }){
         const iconBg = theme || iconBgs[i%iconBgs.length];
         return (
           <div key={i} style={{borderRadius:14,padding:'16px 18px',background:cardBg,border:'1px solid var(--line)',textAlign: centered ? 'center' : 'left'}}>
-            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background:iconBg, margin: centered ? '0 auto 8px' : '0 0 8px'}}>
+            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',background:iconBg, margin: centered ? `0 auto ${d.iconGap ?? 8}px` : `0 0 ${d.iconGap ?? 8}px`}}>
               <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
             </div>
-            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
-            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
+            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom: d.titleGap ?? 5}}/>
+            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:`0 0 ${d.descGap ?? 8}px`,fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
             {/* 불릿 목록은 카드 정렬과 무관하게 항상 좌측 정렬 */}
             <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7,textAlign:'left'}}>
               {(it.bullets||[]).map((b,li)=>(
@@ -797,14 +804,14 @@ window.DEFAULT_DATA = {
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#2882FF', width:1 },
-    emphasis:{ enabled:false, color:'#2882FF' } }),
+    border:{ enabled:false, color:'#D9D9D9', width:1 },
+    emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
-  'role-cards': () => ({ align:'left', items:[
+  'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
   ]}),

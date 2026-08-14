@@ -67,7 +67,13 @@ function renderComponentsToHTML(components, order){
           {order.map(cid => {
             const c = components[cid]; if(!c) return null;
             const R = window.RENDERERS[c.type];
-            return <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 20}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
+            return (
+              <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 20}}>
+                {c.customHtml
+                  ? <div dangerouslySetInnerHTML={{__html: c.customHtml}}/>
+                  : <R data={c.data} editing={false} onChange={()=>{}}/>}
+              </div>
+            );
           })}
         </div>
       </React.StrictMode>

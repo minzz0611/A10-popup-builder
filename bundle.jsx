@@ -468,13 +468,17 @@ function HeroBlock({ data, editing, onChange }){
   const upd = (k, v) => onChange({ ...d, [k]: v });
   return (
     <section style={{padding:'30px 56px 22px', textAlign:'center', background:'radial-gradient(700px 260px at 50% -60px, #eef1ff 0%, rgba(255,255,255,0) 70%)'}}>
-      <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
-        <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
-      </div>
+      {(d.badge || editing) && (
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'var(--grad-soft)',color:'var(--blue-dark)',fontWeight:700,fontSize:11.5,padding:'5px 13px',borderRadius:999,marginBottom:10}}>
+          <ET tag="span" value={d.badge} onChange={(v)=>upd('badge',v)} editing={editing}/>
+        </div>
+      )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
         style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
-      <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
-        style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
+      {(d.subtitle || editing) && (
+        <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
+          style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
+      )}
       <ET tag="p" value={d.body} onChange={(v)=>upd('body',v)} editing={editing} multiline
         style={{color:'var(--sub)',fontSize:12.5,lineHeight:1.5,maxWidth:600,margin:'0 auto 14px'}}/>
       {(d.showCta !== false || d.showVideoBtn) && (
@@ -706,22 +710,25 @@ function ImageBlock({ data, editing, onChange }){
   const height = d.freeAspect ? (live?.height ?? d.height ?? 240) : null;
 
   // 강조(emphasis) 시 굵기·네온 적용범위는 고정값 — 색상만 바꿀 수 있다.
-  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~3px로 제한한다.
-  const EMPHASIS_BORDER_WIDTH = 4;
-  const EMPHASIS_GLOW_SPREAD = 16;
+  // 강조가 켜지면 기본 테두리보다 항상 굵게 보이도록, 기본 테두리는 1~2px로 제한한다.
+  const EMPHASIS_BORDER_WIDTH = 3;
+  const EMPHASIS_GLOW_SPREAD = 5; // 기존(16px)의 약 1/3
   const emphasisOn = !!d.emphasis?.enabled;
   const borderOn = !!d.border?.enabled;
-  const baseBorderWidth = Math.max(1, Math.min(3, d.border?.width || 1));
-  const baseBorderColor = d.border?.color || '#1C90FB';
+  const baseBorderWidth = Math.max(1, Math.min(2, d.border?.width || 1));
+  const baseBorderColor = d.border?.color || '#D9D9D9';
   const emphasisColor = d.emphasis?.color || '#1C90FB';
   let frameExtra = {};
   if(emphasisOn){
     frameExtra = {
       border: `${EMPHASIS_BORDER_WIDTH}px solid ${emphasisColor}`,
-      boxShadow: `0 0 0 2px ${hexToRgba(emphasisColor,.18)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.55)}`,
+      boxShadow: `0 0 0 1px ${hexToRgba(emphasisColor,.08)}, 0 0 ${EMPHASIS_GLOW_SPREAD}px ${Math.round(EMPHASIS_GLOW_SPREAD/2)}px ${hexToRgba(emphasisColor,.2)}`,
     };
   } else if(borderOn){
-    frameExtra = { border: `${baseBorderWidth}px solid ${baseBorderColor}` };
+    frameExtra = {
+      border: `${baseBorderWidth}px solid ${baseBorderColor}`,
+      boxShadow: `0 0 4px 1px ${hexToRgba(baseBorderColor,.3)}`,
+    };
   }
 
   const onFile = (e) => {
@@ -813,7 +820,7 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
           <div style={{background:'#161B26',height:150,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
-            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)'}}>
+            <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: (it.tag || editing) ? 'inline-block' : 'none'}}>
               <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
             </span>
             <div style={{width:52,height:52,borderRadius:'50%',background:'var(--grad)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:16,boxShadow:'0 8px 20px rgba(80,90,255,.4)'}}>▶</div>
@@ -884,11 +891,11 @@ function RoleCards({ data, editing, onChange }){
         const iconBg = theme || iconBgs[i%iconBgs.length];
         return (
           <div key={i} style={{borderRadius:14,padding:'16px 18px',background:cardBg,border:'1px solid var(--line)',textAlign: centered ? 'center' : 'left'}}>
-            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',marginBottom:8,background:iconBg, margin: centered ? '0 auto 8px' : '0 0 8px'}}>
+            <div style={{width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'#fff',background:iconBg, margin: centered ? `0 auto ${d.iconGap ?? 8}px` : `0 0 ${d.iconGap ?? 8}px`}}>
               <ET tag="span" value={it.icon} onChange={(v)=>upd(i,'icon',v)} editing={editing}/>
             </div>
-            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom:5}}/>
-            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:'0 0 8px',fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
+            <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:14,marginBottom: d.titleGap ?? 5}}/>
+            <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{margin:`0 0 ${d.descGap ?? 8}px`,fontSize:12,color:'var(--sub)',lineHeight:1.5}}/>
             {/* 불릿 목록은 카드 정렬과 무관하게 항상 좌측 정렬 */}
             <ul style={{margin:0,paddingLeft:15,fontSize:11.5,color:'var(--sub)',lineHeight:1.7,textAlign:'left'}}>
               {(it.bullets||[]).map((b,li)=>(
@@ -1058,14 +1065,14 @@ window.DEFAULT_DATA = {
     ],
   }),
   'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
-    border:{ enabled:false, color:'#2882FF', width:1 },
-    emphasis:{ enabled:false, color:'#2882FF' } }),
+    border:{ enabled:false, color:'#D9D9D9', width:1 },
+    emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
-  'role-cards': () => ({ align:'left', items:[
+  'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
   ]}),
@@ -1146,7 +1153,13 @@ function renderComponentsToHTML(components, order){
           {order.map(cid => {
             const c = components[cid]; if(!c) return null;
             const R = window.RENDERERS[c.type];
-            return <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 20}}><R data={c.data} editing={false} onChange={()=>{}}/></div>;
+            return (
+              <div key={cid} data-comp-type={c.type} style={{marginBottom: c.style?.gapAfter ?? 20}}>
+                {c.customHtml
+                  ? <div dangerouslySetInnerHTML={{__html: c.customHtml}}/>
+                  : <R data={c.data} editing={false} onChange={()=>{}}/>}
+              </div>
+            );
           })}
         </div>
       </React.StrictMode>
@@ -1546,10 +1559,21 @@ function TextInput({ value, onChange, multiline, placeholder, rows=3 }){
   // 항상 textarea를 사용해서, multiline으로 지정하지 않은 짧은 필드에서도
   // Enter/Shift+Enter로 줄바꿈을 넣을 수 있게 한다. <input>은 구조적으로
   // 줄바꿈 문자를 담을 수 없어서 textarea로 통일함.
-  return <textarea style={{...inputStyle, resize:'vertical', minHeight: (multiline ? rows : 1.6) * 20}}
+  const ref = React.useRef(null);
+  const resize = () => {
+    const el = ref.current;
+    if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
+  // 내용이 바뀔 때마다(불러온 데이터 포함) 높이를 다시 계산해서, 내용이
+  // 다 보이도록 늘어나고 내부 스크롤은 생기지 않게 한다.
+  React.useEffect(() => { resize(); }, [value]);
+  return <textarea ref={ref} style={{...inputStyle, resize:'none', overflow:'hidden', minHeight: (multiline ? rows : 1.6) * 20}}
     rows={multiline ? rows : 1}
     value={value||''} placeholder={placeholder}
-    onChange={(e)=>onChange(e.target.value)} />;
+    onChange={(e)=>onChange(e.target.value)}
+    onInput={resize} />;
 }
 
 function NumberInput({ value, onChange, min, max, step=1 }){
@@ -1559,47 +1583,6 @@ function NumberInput({ value, onChange, min, max, step=1 }){
 
 // ------- Design-system color palette (from user-provided palette sheets) -------
 window.DESIGN_PALETTE = [
-  { group:'Text', colors:[
-    { name:'Text 01', hex:'#000000' }, { name:'Text 02', hex:'#4A4A4A' },
-    { name:'Text 03', hex:'#8C8C8C' }, { name:'Text 04', hex:'#A6A6A6' },
-    { name:'Text 05', hex:'#1C90FB' }, { name:'Text 06', hex:'#FC5356' },
-  ]},
-  { group:'Bg', colors:[
-    { name:'Bg 01', hex:'#F5F5F5' }, { name:'Bg 02', hex:'#F7F7F7' },
-    { name:'Bg 03', hex:'#FAFAFA' }, { name:'Bg 04', hex:'#F2F6F8' },
-    { name:'Bg 05', hex:'#EFF7FF' }, { name:'Bg 06', hex:'#FEF3F0' },
-  ]},
-  { group:'Icon', colors:[
-    { name:'Icon 01', hex:'#4A4A4A' }, { name:'Icon 02', hex:'#7B7B7B' },
-    { name:'Icon 03', hex:'#C4C4C4' }, { name:'Icon 04', hex:'#1C90FB' },
-    { name:'Icon 05', hex:'#436EBD' },
-  ]},
-  { group:'Border', colors:[
-    { name:'Border 01', hex:'#666666' }, { name:'Border 02', hex:'#CCCCCC' },
-    { name:'Border 03', hex:'#D9D9D9' }, { name:'Border 04', hex:'#E6E6E6' },
-    { name:'Border 05', hex:'#1C90FB' },
-  ]},
-  { group:'Status', colors:[
-    { name:'Status 01', hex:'#20C997' }, { name:'Status 02', hex:'#2DBCB5' },
-    { name:'Status 03', hex:'#39B0D2' }, { name:'Status 04', hex:'#46A3F0' },
-    { name:'Status 05', hex:'#FF8787' }, { name:'Status 06', hex:'#F8A457' },
-    { name:'Status 07', hex:'#F0C325' }, { name:'Status 08', hex:'#C8B465' },
-    { name:'Status 09', hex:'#9DA3AA' }, { name:'Status 10', hex:'#E2E2E2' },
-  ]},
-  { group:'Graph', colors:[
-    { name:'Graph 01', hex:'#4EABFA' }, { name:'Graph 02', hex:'#50CBDE' },
-    { name:'Graph 03', hex:'#AFD873' }, { name:'Graph 04', hex:'#F7AD68' },
-    { name:'Graph 05', hex:'#F5D471' }, { name:'Graph 06', hex:'#9A96FF' },
-    { name:'Graph 07', hex:'#F48DA5' }, { name:'Graph 08', hex:'#67CCB5' },
-    { name:'Graph 09', hex:'#819AFF' }, { name:'Graph 10', hex:'#D887ED' },
-  ]},
-  { group:'색상 구분값', colors:[
-    { name:'Color 01', hex:'#FF8787' }, { name:'Color 02', hex:'#FFA94D' },
-    { name:'Color 03', hex:'#FFCA55' }, { name:'Color 04', hex:'#FFE748' },
-    { name:'Color 05', hex:'#B3E270' }, { name:'Color 06', hex:'#60DA9F' },
-    { name:'Color 07', hex:'#49C8F2' }, { name:'Color 08', hex:'#53A0FE' },
-    { name:'Color 09', hex:'#8B8BFF' }, { name:'Color 10', hex:'#BC8FFF' },
-  ]},
   { group:'Gray 1', colors:[
     { name:'Gray1 01', hex:'#FFFFFF' }, { name:'Gray1 02', hex:'#F2F2F2' },
     { name:'Gray1 03', hex:'#D8D8D8' }, { name:'Gray1 04', hex:'#BFBFBF' },
@@ -1650,6 +1633,47 @@ window.DESIGN_PALETTE = [
     { name:'Magenta 03', hex:'#E3ADFF' }, { name:'Magenta 04', hex:'#D583FF' },
     { name:'Magenta 05', hex:'#9600E4' }, { name:'Magenta 06', hex:'#640098' },
   ]},
+  { group:'Text', colors:[
+    { name:'Text 01', hex:'#000000' }, { name:'Text 02', hex:'#4A4A4A' },
+    { name:'Text 03', hex:'#8C8C8C' }, { name:'Text 04', hex:'#A6A6A6' },
+    { name:'Text 05', hex:'#1C90FB' }, { name:'Text 06', hex:'#FC5356' },
+  ]},
+  { group:'Bg', colors:[
+    { name:'Bg 01', hex:'#F5F5F5' }, { name:'Bg 02', hex:'#F7F7F7' },
+    { name:'Bg 03', hex:'#FAFAFA' }, { name:'Bg 04', hex:'#F2F6F8' },
+    { name:'Bg 05', hex:'#EFF7FF' }, { name:'Bg 06', hex:'#FEF3F0' },
+  ]},
+  { group:'Icon', colors:[
+    { name:'Icon 01', hex:'#4A4A4A' }, { name:'Icon 02', hex:'#7B7B7B' },
+    { name:'Icon 03', hex:'#C4C4C4' }, { name:'Icon 04', hex:'#1C90FB' },
+    { name:'Icon 05', hex:'#436EBD' },
+  ]},
+  { group:'Border', colors:[
+    { name:'Border 01', hex:'#666666' }, { name:'Border 02', hex:'#CCCCCC' },
+    { name:'Border 03', hex:'#D9D9D9' }, { name:'Border 04', hex:'#E6E6E6' },
+    { name:'Border 05', hex:'#1C90FB' },
+  ]},
+  { group:'Status', colors:[
+    { name:'Status 01', hex:'#20C997' }, { name:'Status 02', hex:'#2DBCB5' },
+    { name:'Status 03', hex:'#39B0D2' }, { name:'Status 04', hex:'#46A3F0' },
+    { name:'Status 05', hex:'#FF8787' }, { name:'Status 06', hex:'#F8A457' },
+    { name:'Status 07', hex:'#F0C325' }, { name:'Status 08', hex:'#C8B465' },
+    { name:'Status 09', hex:'#9DA3AA' }, { name:'Status 10', hex:'#E2E2E2' },
+  ]},
+  { group:'Graph', colors:[
+    { name:'Graph 01', hex:'#4EABFA' }, { name:'Graph 02', hex:'#50CBDE' },
+    { name:'Graph 03', hex:'#AFD873' }, { name:'Graph 04', hex:'#F7AD68' },
+    { name:'Graph 05', hex:'#F5D471' }, { name:'Graph 06', hex:'#9A96FF' },
+    { name:'Graph 07', hex:'#F48DA5' }, { name:'Graph 08', hex:'#67CCB5' },
+    { name:'Graph 09', hex:'#819AFF' }, { name:'Graph 10', hex:'#D887ED' },
+  ]},
+  { group:'색상 구분값', colors:[
+    { name:'Color 01', hex:'#FF8787' }, { name:'Color 02', hex:'#FFA94D' },
+    { name:'Color 03', hex:'#FFCA55' }, { name:'Color 04', hex:'#FFE748' },
+    { name:'Color 05', hex:'#B3E270' }, { name:'Color 06', hex:'#60DA9F' },
+    { name:'Color 07', hex:'#49C8F2' }, { name:'Color 08', hex:'#53A0FE' },
+    { name:'Color 09', hex:'#8B8BFF' }, { name:'Color 10', hex:'#BC8FFF' },
+  ]},
 ];
 
 function ColorPicker({ value, onChange }){
@@ -1664,17 +1688,17 @@ function ColorPicker({ value, onChange }){
     const btn = btnRef.current;
     if(!btn) return;
     const rect = btn.getBoundingClientRect();
-    const panelWidth = 284;
+    const panelWidth = 320;
     let left = rect.left;
     if(left + panelWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - panelWidth - 8);
     const spaceBelow = window.innerHeight - rect.bottom - 14;
     const spaceAbove = rect.top - 14;
     let top, maxHeight;
-    if(spaceBelow < 220 && spaceAbove > spaceBelow){
-      maxHeight = Math.min(400, spaceAbove);
+    if(spaceBelow < 260 && spaceAbove > spaceBelow){
+      maxHeight = Math.min(520, spaceAbove);
       top = Math.max(8, rect.top - 6 - maxHeight);
     } else {
-      maxHeight = Math.min(400, Math.max(160, spaceBelow));
+      maxHeight = Math.min(520, Math.max(200, spaceBelow));
       top = rect.bottom + 6;
     }
     setCoords({ top, left, width: panelWidth, maxHeight });
@@ -1718,18 +1742,20 @@ function ColorPicker({ value, onChange }){
 
   const panel = (open && coords) ? ReactDOM.createPortal(
     <div ref={panelRef} style={{position:'fixed',zIndex:9999,top:coords.top,left:coords.left,width:coords.width,maxHeight:coords.maxHeight,overflowY:'auto',background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'0 12px 30px rgba(20,30,60,.18)',padding:'10px 10px 10px'}}>
-      {window.DESIGN_PALETTE.map(g => (
-        <div key={g.group} style={{marginBottom:10}}>
-          <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>{g.group}</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
-            {g.colors.map(c => (
-              <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
-                onClick={()=>{ onChange(c.hex); setOpen(false); }}
-                style={{width:26,height:26,borderRadius:6,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
-            ))}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 12px'}}>
+        {window.DESIGN_PALETTE.map(g => (
+          <div key={g.group} style={{marginBottom:8}}>
+            <div style={{fontSize:9.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',marginBottom:4}}>{g.group}</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:3}}>
+              {g.colors.map(c => (
+                <button key={c.name} type="button" title={`${c.name} · ${c.hex}`}
+                  onClick={()=>{ onChange(c.hex); setOpen(false); }}
+                  style={{flex:'none',width:18,height:18,borderRadius:4,padding:0,cursor:'pointer',background:c.hex,border: (value||'').toLowerCase()===c.hex.toLowerCase() ? '2px solid #1B2130' : '1px solid rgba(0,0,0,.1)'}}/>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
       <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:2}}>
         <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:6}}>다른 색상 (직접 지정)</div>
         <div style={{display:'flex',alignItems:'center',gap:6}}>
@@ -2182,7 +2208,7 @@ function CompEditor({ comp, onChange }){
                   <ColorPicker value={d.border?.color} onChange={(hex)=>onChange({...d, border:{...(d.border||{}), color:hex}})}/>
                 </Field>
                 <Field label={`테두리 굵기 (${d.border?.width||1}px)`}>
-                  <input type="range" min={1} max={3} step={1}
+                  <input type="range" min={1} max={2} step={1}
                     value={d.border?.width||1}
                     onChange={(e)=>onChange({...d, border:{...(d.border||{}), width:Number(e.target.value)}})}
                     style={{width:'100%'}}/>
@@ -2303,6 +2329,19 @@ function CompEditor({ comp, onChange }){
       <div>
         <Field label=" "><Toggle value={d.align==='center'} onChange={(v)=>set('align', v?'center':'left')} label="카드 내용 가운데 정렬"/></Field>
         <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:8,lineHeight:1.5}}>불릿 항목은 가운데 정렬을 켜도 항상 왼쪽 정렬로 표시돼요.</div>
+
+        <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'4px 0 6px'}}>카드 내부 간격</div>
+        <div style={{fontSize:10.5,color:'var(--mute)',marginBottom:8,lineHeight:1.5}}>카드마다 따로 조절할 수는 없고, 모든 역할 카드에 동일하게 적용돼요 (통일성 유지).</div>
+        <Field label={`아이콘 - 제목 (${d.iconGap ?? 8}px)`}>
+          <input type="range" min={0} max={30} step={1} value={d.iconGap ?? 8} onChange={(e)=>set('iconGap', Number(e.target.value))} style={{width:'100%'}}/>
+        </Field>
+        <Field label={`제목 - 설명 (${d.titleGap ?? 5}px)`}>
+          <input type="range" min={0} max={30} step={1} value={d.titleGap ?? 5} onChange={(e)=>set('titleGap', Number(e.target.value))} style={{width:'100%'}}/>
+        </Field>
+        <Field label={`설명 - 불릿 목록 (${d.descGap ?? 8}px)`}>
+          <input type="range" min={0} max={30} step={1} value={d.descGap ?? 8} onChange={(e)=>set('descGap', Number(e.target.value))} style={{width:'100%'}}/>
+        </Field>
+
         <Field label="역할 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="역할" maxItems={3}
             defaultItem={{icon:'👤',title:'역할',desc:'설명',bullets:['항목 1','항목 2']}}
@@ -2347,8 +2386,9 @@ function CompEditor({ comp, onChange }){
   return <div style={{color:'var(--mute)',fontSize:12}}>이 컴포넌트는 캔버스에서 더블클릭으로 직접 편집하세요.</div>;
 }
 
-function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onProjectUpdate, onDelete, onDuplicate, isProtected }){
+function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSelect, onUpdateComp, onUpdateStyle, onUpdateCustomHtml, onProjectUpdate, onDelete, onDuplicate, isProtected }){
   const [showPopupSettings, setShowPopupSettings] = pUseState(false);
+  const [htmlModeIds, setHtmlModeIds] = pUseState(() => new Set());
 
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
   const itemRefs = React.useRef({});
@@ -2400,8 +2440,37 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
               {expanded && (
                 <div style={{padding:'2px 12px 14px',borderTop:'1px solid var(--line)'}}>
                   <div style={{paddingTop:12}}>
-                    <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+                    {(htmlModeIds.has(cid) || !!comp.customHtml) ? (
+                      <div>
+                        <textarea
+                          value={comp.customHtml||''}
+                          onChange={(e)=>onUpdateCustomHtml && onUpdateCustomHtml(comp.id, e.target.value)}
+                          placeholder="<div>여기에 HTML 코드를 입력하세요</div>"
+                          rows={8}
+                          style={{width:'100%',padding:'8px 10px',border:'1px solid var(--line)',borderRadius:7,fontSize:11.5,fontFamily:'monospace',color:'var(--ink)',resize:'vertical',boxSizing:'border-box'}}/>
+                        <div style={{fontSize:10.5,color:'var(--mute)',marginTop:5,lineHeight:1.5}}>
+                          입력한 HTML이 그대로 렌더링돼요. 이 모드에서는 위 구조화된 편집 폼 대신 이 코드가 사용돼요.
+                        </div>
+                      </div>
+                    ) : (
+                      <CompEditor comp={comp} onChange={(newData)=>onUpdateComp(comp.id, newData)}/>
+                    )}
                   </div>
+
+                  {!locked && (
+                    <button type="button" onClick={()=>{
+                      const usingHtml = htmlModeIds.has(cid) || !!comp.customHtml;
+                      setHtmlModeIds(prev => {
+                        const next = new Set(prev);
+                        if(usingHtml) next.delete(cid); else next.add(cid);
+                        return next;
+                      });
+                      if(usingHtml) onUpdateCustomHtml && onUpdateCustomHtml(comp.id, '');
+                    }}
+                      style={{marginTop:10,fontSize:11,fontWeight:700,color: (htmlModeIds.has(cid)||!!comp.customHtml) ? 'var(--danger)' : 'var(--blue-dark)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                      {(htmlModeIds.has(cid)||!!comp.customHtml) ? '구조화된 편집으로 돌아가기' : '</> HTML 코드로 직접 편집'}
+                    </button>
+                  )}
 
                   {!isLast && (
                     <Field label="다음 컴포넌트와의 간격" hint="캔버스에서 컴포넌트 사이를 직접 드래그해도 조절할 수 있어요.">
@@ -3020,7 +3089,9 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
           isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
           onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-          <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
+          {c.customHtml
+            ? <div dangerouslySetInnerHTML={{__html: c.customHtml}}/>
+            : <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>}
         </CompFrame>
       );
       if(idx < componentList.length - 1){
@@ -3929,6 +4000,14 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
   };
 
+  // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
+  const handleUpdateCustomHtml = (id, html) => {
+    commit(prev => ({
+      ...prev,
+      components: { ...prev.components, [id]: { ...prev.components[id], customHtml: html } }
+    }));
+  };
+
   const handleProjectUpdate = (patch) => {
     commit(prev => ({ ...prev, ...patch }));
     if(patch.activeSectionId !== undefined){
@@ -4244,6 +4323,7 @@ function App(){
             onSelect={setSelectedId}
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}
+            onUpdateCustomHtml={handleUpdateCustomHtml}
             onProjectUpdate={handleProjectUpdate}
             onDelete={handleDeleteComponent}
             onDuplicate={handleDuplicateComponent}

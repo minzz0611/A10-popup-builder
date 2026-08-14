@@ -132,7 +132,9 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         <CompFrame key={cid} comp={c} selected={selectedId===cid} onSelect={onSelect} onContextMenu={onContextMenu}
           isDragOver={dragOverId===cid} dragOverPosition={dragOverPos}
           onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}>
-          <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>
+          {c.customHtml
+            ? <div dangerouslySetInnerHTML={{__html: c.customHtml}}/>
+            : <R data={c.data} editing={editing} onChange={(newData)=>onUpdateComp(cid, newData)}/>}
         </CompFrame>
       );
       if(idx < componentList.length - 1){
