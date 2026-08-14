@@ -549,6 +549,7 @@ function App(){
             activeSectionId={activeSectionId}
             activeTabId={activeTabId}
             onSelect={setSelectedId}
+            onSelectSection={selectSection}
             onSelectTab={(tabId)=>{ setActiveTabId(tabId); setSelectedId(null); }}
             onUpdateComp={handleUpdateComp}
             onUpdateStyle={handleUpdateStyle}

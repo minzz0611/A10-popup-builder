@@ -105,7 +105,7 @@ function GapHandle({ gap, onChange }){
 // ============================================================
 // Canvas
 // ============================================================
-function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectTab, onUpdateComp, onUpdateStyle, onUpdateTopGap, onReorder, onContextMenu, targetSection, previewOnly }){
+function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onSelectSection, onSelectTab, onUpdateComp, onUpdateStyle, onUpdateTopGap, onReorder, onContextMenu, targetSection, previewOnly }){
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
@@ -246,9 +246,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             {/* Sidebar mock */}
             <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
               <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
-                onSelect={(id)=>{
-                  // clicking a top-level section in canvas doesn't switch section; that's for real popup
-                }}
+                onSelect={(id)=>onSelectSection && onSelectSection(id)}
                 onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
             </nav>
             {/* Content editable */}
