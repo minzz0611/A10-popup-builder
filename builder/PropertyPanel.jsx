@@ -666,6 +666,11 @@ function CompEditor({ comp, onChange }){
               onApply={(newSrc, cropInset)=>onChange({...d, src:newSrc, cropInset})}
               onReset={()=>onChange({...d, src:d.originalSrc||d.src, cropInset:{top:0,right:0,bottom:0,left:0}})}/>
 
+            <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>모양</div>
+            <Field label=" ">
+              <Toggle value={d.rounded !== false} onChange={(v)=>set('rounded',v)} label="모서리 둥글게"/>
+            </Field>
+
             <div style={{fontSize:11,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',margin:'14px 0 8px'}}>테두리 · 강조</div>
             <Field label=" ">
               <Toggle value={!!d.border?.enabled} onChange={(v)=>onChange({...d, border:{...(d.border||{}), enabled:v}})} label="테두리 추가"/>
