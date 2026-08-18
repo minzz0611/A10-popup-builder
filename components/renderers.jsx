@@ -743,11 +743,11 @@ function BadgeCard({ data, editing, onChange }){
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:14}}>
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{background:'#fff',border:'1px solid var(--line)',borderRadius:14,padding:'16px 18px',boxShadow:'var(--shadow-sm)'}}>
-          <div style={{display:'inline-block',background:it.badgeColor||'#2F6BFF',color:'#fff',fontWeight:800,fontSize:11.5,padding:'5px 12px',borderRadius:999,marginBottom:10}}>
+          <div style={{display:'inline-block',background:it.badgeColor||'#2F6BFF',color:'#fff',fontWeight:800,fontSize:13,padding:'6px 14px',borderRadius:999,marginBottom:10}}>
             <ET tag="span" value={it.badge} onChange={(v)=>upd(i,'badge',v)} editing={editing} placeholder="배지 텍스트를 입력하세요"/>
           </div>
           <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline
-            style={{margin:0,fontSize:12.8,color:'var(--ink)',lineHeight:1.6}} placeholder="설명을 입력하세요"/>
+            style={{margin:0,fontSize:12,color:'var(--ink)',lineHeight:1.6}} placeholder="설명을 입력하세요"/>
         </div>
       ))}
     </div>
