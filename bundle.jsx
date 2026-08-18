@@ -3673,7 +3673,7 @@ function PreviewModal({ state, onClose }){
                 const c = state.components[cid]; if(!c) return null;
                 const R = window.RENDERERS[c.type];
                 return (
-                  <div key={cid} style={{marginBottom:6}}>
+                  <div key={cid} style={{marginBottom: c.style?.gapAfter ?? 20}}>
                     {c.type === 'hero' ? (
                       <>
                         {/* Render hero, override CTA to switch screen */}
@@ -3707,7 +3707,7 @@ function PreviewModal({ state, onClose }){
                   const c = state.components[cid]; if(!c) return null;
                   const R = window.RENDERERS[c.type];
                   return (
-                    <div key={cid} style={{marginBottom:6}}>
+                    <div key={cid} style={{marginBottom: c.style?.gapAfter ?? 20}}>
                       {c.customHtml
                         ? <div dangerouslySetInnerHTML={{__html: c.customHtml}}/>
                         : <R data={c.data} editing={false} onChange={()=>{}}/>}
