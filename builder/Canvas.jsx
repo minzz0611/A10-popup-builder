@@ -218,7 +218,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
-            <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
             <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
@@ -246,6 +246,12 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         </div>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', height: windowHeight}}
           onClick={()=>onSelect(null)}>
+          <div style={{flex:'none', position:'relative', height:46}}>
+            <button style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'default',zIndex:2,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
+              ‹ 처음으로
+            </button>
+            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+          </div>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
             <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
@@ -343,14 +349,14 @@ function PopupFooter({ state }){
   return (
     <>
       {p.dontShowOption && (
-        <div style={{flex:'none',padding:'12px 44px',display:'flex',justifyContent:'flex-end',borderTop:'1px solid var(--line)'}}>
+        <div style={{flex:'none',padding:'8px 44px',display:'flex',justifyContent:'flex-end',borderTop:'1px solid var(--line)'}}>
           <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--sub)',cursor:'default'}}>
             <input type="checkbox" style={{width:16,height:16,accentColor:'var(--blue)',margin:0}}/>
             다시 보지 않기
           </label>
         </div>
       )}
-      <div style={{flex:'none',borderTop:'1px solid var(--line)',padding:'16px 44px',display:'flex',justifyContent:'space-between',alignItems:'center',color:'#9199A6',fontSize:12.3}}>
+      <div style={{flex:'none',borderTop:'1px solid var(--line)',padding:'10px 44px',display:'flex',justifyContent:'space-between',alignItems:'center',color:'#9199A6',fontSize:12.3}}>
         <div>{(f.links||[]).map((l,i) => <span key={i} style={{marginRight:16}}>{l}</span>)}</div>
         <div>{f.phone && <>전국 어디서나 <b>{f.phone}</b></>} {f.phone && f.url && ' | '} {f.url}</div>
       </div>
