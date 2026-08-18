@@ -1147,6 +1147,7 @@ button{font-family:inherit;}
 .window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(700px, 88vh);display:flex;flex-direction:column;}
 .modal-shell{position:relative;background:#fff;flex:1;min-height:0;display:flex;flex-direction:column;}
 .modal-header{flex:none;position:relative;height:46px;}
+.modal-header.hero-mode{height:0;}
 .modal-close{position:absolute;top:8px;right:20px;width:30px;height:30px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:16px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:#E7E9EE;}
 .modal-back{position:absolute;top:8px;left:20px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 13px;}
@@ -1295,7 +1296,7 @@ async function buildFinalHtml(state){
 <div class="stage">
   <div class="window" id="window">
     <div class="modal-shell" id="modalShell">
-      <div class="modal-header">
+      <div class="modal-header hero-mode" id="modalHeader">
         ${hasDetail ? `<button class="modal-back" id="backBtn" onclick="showHero()">&#8249; 처음으로</button>` : ''}
         <button class="modal-close" onclick="closeModal()">&#10005;</button>
       </div>
@@ -1361,11 +1362,13 @@ function showDetail(){
   document.getElementById('heroScreen').classList.remove('active');
   var d = document.getElementById('detailScreen'); if(d) d.classList.add('active');
   var bk = document.getElementById('backBtn'); if(bk) bk.classList.add('show');
+  var mh = document.getElementById('modalHeader'); if(mh) mh.classList.remove('hero-mode');
 }
 function showHero(){
   var d = document.getElementById('detailScreen'); if(d) d.classList.remove('active');
   document.getElementById('heroScreen').classList.add('active');
   var bk = document.getElementById('backBtn'); if(bk) bk.classList.remove('show');
+  var mh = document.getElementById('modalHeader'); if(mh) mh.classList.add('hero-mode');
 }
 function closeModal(){
   document.getElementById('overlay').style.display = 'none';
@@ -3245,9 +3248,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
-            <div style={{flex:'none', position:'relative', height:46}}>
-              <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
-            </div>
+            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
             <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
@@ -3645,7 +3646,7 @@ function PreviewModal({ state, onClose }){
 
       <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
-          <div style={{flex:'none', position:'relative', height:46}}>
+          <div style={{flex:'none', position:'relative', height: screen === 'hero' ? 0 : 46}}>
             {screen === 'detail' && (
               <button onClick={showHero}
                 style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
