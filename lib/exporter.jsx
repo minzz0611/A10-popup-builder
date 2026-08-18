@@ -25,10 +25,11 @@ button{font-family:inherit;}
 .stage{max-width:1180px;width:100%;margin:0 auto;}
 .window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(700px, 88vh);display:flex;flex-direction:column;}
 .modal-shell{position:relative;background:#fff;flex:1;min-height:0;display:flex;flex-direction:column;}
-.modal-header{flex:none;position:relative;height:58px;}
-.modal-close{position:absolute;top:12px;right:20px;width:34px;height:34px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:18px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
+.modal-header{flex:none;position:relative;height:46px;}
+.modal-header.hero-mode{height:0;}
+.modal-close{position:absolute;top:8px;right:20px;width:30px;height:30px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:16px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:#E7E9EE;}
-.modal-back{position:absolute;top:12px;left:20px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 14px;}
+.modal-back{position:absolute;top:8px;left:20px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 13px;}
 .modal-back:hover{background:var(--panel);}
 .modal-back.show{display:flex;}
 .screen{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;}
@@ -46,10 +47,10 @@ button{font-family:inherit;}
 .content{flex:1;padding:0 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
-.dont-show-bar{flex:none;padding:12px 44px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);}
+.dont-show-bar{flex:none;padding:8px 44px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);}
 .dont-show{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;user-select:none;}
 .dont-show input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;margin:0;}
-.footer-bar{flex:none;border-top:1px solid var(--line);padding:16px 44px;display:flex;justify-content:space-between;align-items:center;color:#9199A6;font-size:12.3px;}
+.footer-bar{flex:none;border-top:1px solid var(--line);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;color:#9199A6;font-size:12.3px;}
 .footer-bar .links span{margin-right:16px;}
 .sub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .sub-tabs button{border:1px solid var(--line);background:#fff;color:var(--sub);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:999px;cursor:pointer;}
@@ -174,7 +175,7 @@ async function buildFinalHtml(state){
 <div class="stage">
   <div class="window" id="window">
     <div class="modal-shell" id="modalShell">
-      <div class="modal-header">
+      <div class="modal-header hero-mode" id="modalHeader">
         ${hasDetail ? `<button class="modal-back" id="backBtn" onclick="showHero()">&#8249; 처음으로</button>` : ''}
         <button class="modal-close" onclick="closeModal()">&#10005;</button>
       </div>
@@ -240,11 +241,13 @@ function showDetail(){
   document.getElementById('heroScreen').classList.remove('active');
   var d = document.getElementById('detailScreen'); if(d) d.classList.add('active');
   var bk = document.getElementById('backBtn'); if(bk) bk.classList.add('show');
+  var mh = document.getElementById('modalHeader'); if(mh) mh.classList.remove('hero-mode');
 }
 function showHero(){
   var d = document.getElementById('detailScreen'); if(d) d.classList.remove('active');
   document.getElementById('heroScreen').classList.add('active');
   var bk = document.getElementById('backBtn'); if(bk) bk.classList.remove('show');
+  var mh = document.getElementById('modalHeader'); if(mh) mh.classList.add('hero-mode');
 }
 function closeModal(){
   document.getElementById('overlay').style.display = 'none';
