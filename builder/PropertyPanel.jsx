@@ -446,6 +446,11 @@ function CompEditor({ comp, onChange }){
               style={{width:'100%'}}/>
           </Field>
         )}
+        {d.showImage!==false && (
+          <Field label=" ">
+            <Toggle value={d.image?.rounded !== false} onChange={(v)=>set('image',{...(d.image||{}), rounded:v})} label="모서리 둥글게"/>
+          </Field>
+        )}
       </div>
     );
   }
