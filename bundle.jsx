@@ -1146,10 +1146,10 @@ button{font-family:inherit;}
 .stage{max-width:1180px;width:100%;margin:0 auto;}
 .window{background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(20,30,60,.18);overflow:hidden;height:min(700px, 88vh);display:flex;flex-direction:column;}
 .modal-shell{position:relative;background:#fff;flex:1;min-height:0;display:flex;flex-direction:column;}
-.modal-header{flex:none;position:relative;height:58px;}
-.modal-close{position:absolute;top:12px;right:20px;width:34px;height:34px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:18px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
+.modal-header{flex:none;position:relative;height:46px;}
+.modal-close{position:absolute;top:8px;right:20px;width:30px;height:30px;border-radius:50%;border:none;background:#F1F2F5;color:#66707F;font-size:16px;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:#E7E9EE;}
-.modal-back{position:absolute;top:12px;left:20px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 14px;}
+.modal-back{position:absolute;top:8px;left:20px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;z-index:5;display:none;align-items:center;gap:5px;padding:0 13px;}
 .modal-back:hover{background:var(--panel);}
 .modal-back.show{display:flex;}
 .screen{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;}
@@ -1167,10 +1167,10 @@ button{font-family:inherit;}
 .content{flex:1;padding:0 44px 20px;min-width:0;overflow-y:auto;min-height:0;}
 .panel{display:none;}
 .panel.active{display:block;}
-.dont-show-bar{flex:none;padding:12px 44px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);}
+.dont-show-bar{flex:none;padding:8px 44px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);}
 .dont-show{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);cursor:pointer;user-select:none;}
 .dont-show input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;margin:0;}
-.footer-bar{flex:none;border-top:1px solid var(--line);padding:16px 44px;display:flex;justify-content:space-between;align-items:center;color:#9199A6;font-size:12.3px;}
+.footer-bar{flex:none;border-top:1px solid var(--line);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;color:#9199A6;font-size:12.3px;}
 .footer-bar .links span{margin-right:16px;}
 .sub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .sub-tabs button{border:1px solid var(--line);background:#fff;color:var(--sub);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:999px;cursor:pointer;}
@@ -3245,7 +3245,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
-            <button style={{position:'absolute',top:18,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
             <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
@@ -3273,6 +3273,12 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
         </div>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'var(--shadow-lg)', overflow:'hidden', display:'flex', flexDirection:'column', height: windowHeight}}
           onClick={()=>onSelect(null)}>
+          <div style={{flex:'none', position:'relative', height:46}}>
+            <button style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'default',zIndex:2,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
+              ‹ 처음으로
+            </button>
+            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+          </div>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
             <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
@@ -3370,14 +3376,14 @@ function PopupFooter({ state }){
   return (
     <>
       {p.dontShowOption && (
-        <div style={{flex:'none',padding:'12px 44px',display:'flex',justifyContent:'flex-end',borderTop:'1px solid var(--line)'}}>
+        <div style={{flex:'none',padding:'8px 44px',display:'flex',justifyContent:'flex-end',borderTop:'1px solid var(--line)'}}>
           <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--sub)',cursor:'default'}}>
             <input type="checkbox" style={{width:16,height:16,accentColor:'var(--blue)',margin:0}}/>
             다시 보지 않기
           </label>
         </div>
       )}
-      <div style={{flex:'none',borderTop:'1px solid var(--line)',padding:'16px 44px',display:'flex',justifyContent:'space-between',alignItems:'center',color:'#9199A6',fontSize:12.3}}>
+      <div style={{flex:'none',borderTop:'1px solid var(--line)',padding:'10px 44px',display:'flex',justifyContent:'space-between',alignItems:'center',color:'#9199A6',fontSize:12.3}}>
         <div>{(f.links||[]).map((l,i) => <span key={i} style={{marginRight:16}}>{l}</span>)}</div>
         <div>{f.phone && <>전국 어디서나 <b>{f.phone}</b></>} {f.phone && f.url && ' | '} {f.url}</div>
       </div>
@@ -3637,15 +3643,15 @@ function PreviewModal({ state, onClose }){
 
       <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
-          <div style={{flex:'none', position:'relative', height:58}}>
+          <div style={{flex:'none', position:'relative', height:46}}>
             {screen === 'detail' && (
               <button onClick={showHero}
-                style={{position:'absolute',top:12,left:20,height:34,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12.5,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 14px'}}>
+                style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
                 ‹ 처음으로
               </button>
             )}
             <button onClick={onClose}
-              style={{position:'absolute',top:12,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
           </div>
 
           {screen === 'hero' ? (
