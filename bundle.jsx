@@ -1002,7 +1002,7 @@ function BadgeCard({ data, editing, onChange }){
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:14}}>
       {(d.items||[]).map((it,i)=>(
         <div key={i} style={{background:'#fff',border:'1px solid var(--line)',borderRadius:14,padding:'16px 18px',boxShadow:'var(--shadow-sm)'}}>
-          <div style={{display:'inline-block',background:it.badgeColor||'#2F6BFF',color:'#fff',fontWeight:800,fontSize:13,padding:'6px 14px',borderRadius:999,marginBottom:10}}>
+          <div style={{display:'inline-block',background: it.gradient ? 'var(--grad)' : (it.badgeColor||'#2F6BFF'),color:'#fff',fontWeight:800,fontSize:13,padding:'6px 14px',borderRadius:999,marginBottom:10}}>
             <ET tag="span" value={it.badge} onChange={(v)=>upd(i,'badge',v)} editing={editing} placeholder="배지 텍스트를 입력하세요"/>
           </div>
           <ET tag="p" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline
@@ -1105,8 +1105,8 @@ window.DEFAULT_DATA = {
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
   'badge-card': () => ({ cols:2, items:[
-    {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',desc:'설명을 입력하세요.'},
-    {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',desc:'설명을 입력하세요.'},
+    {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,desc:'설명을 입력하세요.'},
+    {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,desc:'설명을 입력하세요.'},
   ]}),
   'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
@@ -2341,11 +2341,12 @@ function CompEditor({ comp, onChange }){
         </Field>
         <Field label="카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="카드"
-            defaultItem={{badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',desc:'설명을 입력하세요.'}}
+            defaultItem={{badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,desc:'설명을 입력하세요.'}}
             renderItem={(it,upd)=>(
               <div style={{display:'grid',gap:6}}>
                 <TextInput value={it.badge} onChange={(v)=>upd({badge:v})} placeholder="배지 텍스트"/>
-                <ColorPicker value={it.badgeColor} onChange={(v)=>upd({badgeColor:v})}/>
+                <Toggle value={!!it.gradient} onChange={(v)=>upd({gradient:v})} label="그라데이션 적용"/>
+                {!it.gradient && <ColorPicker value={it.badgeColor} onChange={(v)=>upd({badgeColor:v})}/>}
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
               </div>
             )}/>
