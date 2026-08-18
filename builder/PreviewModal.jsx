@@ -42,7 +42,7 @@ function PreviewModal({ state, onClose }){
 
       <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
-          <div style={{flex:'none', position:'relative', height:46}}>
+          <div style={{flex:'none', position:'relative', height: screen === 'hero' ? 0 : 46}}>
             {screen === 'detail' && (
               <button onClick={showHero}
                 style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
