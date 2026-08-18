@@ -510,11 +510,13 @@ function ImageBlock({ data, editing, onChange }){
     window.addEventListener('mouseup', onUp);
   };
 
+  const imgRadius = d.rounded === false ? 0 : 12; // 모서리 둥글게 여부 - 기본은 둥글게(하위호환)
+
   return (
     <div>
       {d.src ? (
         <div ref={wrapperRef} style={{position:'relative', width: width ? width : '100%', maxWidth:'100%'}}>
-          <div style={{borderRadius:12, overflow:'hidden', height: d.freeAspect ? height : 'auto', ...frameExtra}}>
+          <div style={{borderRadius:imgRadius, overflow:'hidden', height: d.freeAspect ? height : 'auto', ...frameExtra}}>
             <img src={d.src} alt={d.alt||''} style={{
               width:'100%',
               height: d.freeAspect ? '100%' : 'auto',
@@ -535,7 +537,7 @@ function ImageBlock({ data, editing, onChange }){
         </div>
       ) : (
         <EImg src="" editing={editing} onChange={(v)=>onChange({...d, src:v.src, originalSrc:v.src, alt:v.name})}
-          style={{width:'100%',height:d.height||240,borderRadius:12}}/>
+          style={{width:'100%',height:d.height||240,borderRadius:imgRadius}}/>
       )}
       {d.caption && (
         <ET tag="div" value={d.caption} onChange={(v)=>onChange({...d, caption:v})} editing={editing} placeholder="이미지 설명 (선택)"
@@ -805,7 +807,7 @@ window.DEFAULT_DATA = {
       ['내용을 입력하세요','내용을 입력하세요','설명을 입력하세요'],
     ],
   }),
-  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0},
+  'image': () => ({ src:'', originalSrc:'', alt:'', caption:'', width:null, height:240, freeAspect:false, cropInset:{top:0,right:0,bottom:0,left:0}, rounded:true,
     border:{ enabled:false, color:'#E2E2E2', width:1 },
     emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
