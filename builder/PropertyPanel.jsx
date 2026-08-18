@@ -759,9 +759,21 @@ function CompEditor({ comp, onChange }){
   if(t === 'badge-card'){
     return (
       <div>
-        <Field label="배지 텍스트"><TextInput value={d.badge} onChange={(v)=>set('badge',v)}/></Field>
-        <Field label="배지 색상"><ColorPicker value={d.badgeColor} onChange={(v)=>set('badgeColor',v)}/></Field>
-        <Field label="설명"><TextInput value={d.desc} onChange={(v)=>set('desc',v)} multiline/></Field>
+        <Field label="컬럼 수">
+          <Segmented value={d.cols||1} onChange={(v)=>set('cols',v)}
+            options={[{value:1,label:'1열'},{value:2,label:'2열'},{value:3,label:'3열'}]}/>
+        </Field>
+        <Field label="카드">
+          <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="카드"
+            defaultItem={{badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',desc:'설명을 입력하세요.'}}
+            renderItem={(it,upd)=>(
+              <div style={{display:'grid',gap:6}}>
+                <TextInput value={it.badge} onChange={(v)=>upd({badge:v})} placeholder="배지 텍스트"/>
+                <ColorPicker value={it.badgeColor} onChange={(v)=>upd({badgeColor:v})}/>
+                <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
+              </div>
+            )}/>
+        </Field>
       </div>
     );
   }
