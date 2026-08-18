@@ -765,12 +765,21 @@ function CompEditor({ comp, onChange }){
         </Field>
         <Field label="카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="카드"
-            defaultItem={{badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,desc:'설명을 입력하세요.'}}
+            defaultItem={{badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,gradientFrom:'#5601FF',gradientTo:'#2882FF',desc:'설명을 입력하세요.'}}
             renderItem={(it,upd)=>(
               <div style={{display:'grid',gap:6}}>
                 <TextInput value={it.badge} onChange={(v)=>upd({badge:v})} placeholder="배지 텍스트"/>
                 <Toggle value={!!it.gradient} onChange={(v)=>upd({gradient:v})} label="그라데이션 적용"/>
-                {!it.gradient && <ColorPicker value={it.badgeColor} onChange={(v)=>upd({badgeColor:v})}/>}
+                {it.gradient ? (
+                  <>
+                    <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700}}>시작 색상</div>
+                    <ColorPicker value={it.gradientFrom} onChange={(v)=>upd({gradientFrom:v})}/>
+                    <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700}}>끝 색상</div>
+                    <ColorPicker value={it.gradientTo} onChange={(v)=>upd({gradientTo:v})}/>
+                  </>
+                ) : (
+                  <ColorPicker value={it.badgeColor} onChange={(v)=>upd({badgeColor:v})}/>
+                )}
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
               </div>
             )}/>
