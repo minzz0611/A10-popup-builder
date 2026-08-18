@@ -161,10 +161,12 @@ function HeroImage({ image, editing, onChange }){
     window.addEventListener('mouseup', onUp);
   };
 
+  const imgRadius = image?.rounded === false ? 0 : 13; // 모서리 둥글게 여부 - 기본은 둥글게(하위호환)
+
   if(image?.src){
     return (
       <div style={{margin:'16px auto 0', width, maxWidth:'100%', position:'relative'}}>
-        <div style={{borderRadius:13,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
+        <div style={{borderRadius:imgRadius,overflow:'hidden',boxShadow:'0 14px 34px rgba(20,30,70,.2)',border:'1px solid var(--line)'}}>
           <img src={image.src} alt={image.alt||''} style={{width:'100%',height:'auto',display:'block'}}/>
         </div>
         {editing && (
@@ -185,7 +187,7 @@ function HeroImage({ image, editing, onChange }){
     <div
       onClick={(e)=>{ if(editing){ e.stopPropagation(); inputRef.current && inputRef.current.click(); } }}
       style={{
-        margin:'16px auto 0', width, maxWidth:'100%', height:220, borderRadius:13,
+        margin:'16px auto 0', width, maxWidth:'100%', height:220, borderRadius:imgRadius,
         background:'linear-gradient(135deg,#EEF1F6,#E4E9F0)', color:'#8891A3',
         display:'flex',alignItems:'center',justifyContent:'center',
         border:'1.5px dashed #C3C8D2', fontSize:12,fontWeight:600,
