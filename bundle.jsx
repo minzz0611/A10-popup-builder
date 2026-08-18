@@ -988,6 +988,23 @@ function ShapeBlock({ data, editing, onChange }){
 }
 
 // ============================================================
+// 14. BADGE CARD — 상단 배지 + 설명 텍스트의 단일 카드
+// ============================================================
+function BadgeCard({ data, editing, onChange }){
+  const d = data;
+  const upd = (patch) => onChange({ ...d, ...patch });
+  return (
+    <div style={{background:'#fff',border:'1px solid var(--line)',borderRadius:14,padding:'16px 18px',boxShadow:'var(--shadow-sm)'}}>
+      <div style={{display:'inline-block',background:d.badgeColor||'#2F6BFF',color:'#fff',fontWeight:800,fontSize:11.5,padding:'5px 12px',borderRadius:999,marginBottom:10}}>
+        <ET tag="span" value={d.badge} onChange={(v)=>upd({badge:v})} editing={editing} placeholder="배지 텍스트를 입력하세요"/>
+      </div>
+      <ET tag="p" value={d.desc} onChange={(v)=>upd({desc:v})} editing={editing} multiline
+        style={{margin:0,fontSize:12.8,color:'var(--ink)',lineHeight:1.6}} placeholder="설명을 입력하세요"/>
+    </div>
+  );
+}
+
+// ============================================================
 // Registry
 // ============================================================
 window.RENDERERS = {
@@ -1005,6 +1022,7 @@ window.RENDERERS = {
   'section-heading': SectionHeading,
   'text-block': TextBlock,
   'shape': ShapeBlock,
+  'badge-card': BadgeCard,
 };
 
 window.COMPONENT_META = [
@@ -1017,6 +1035,7 @@ window.COMPONENT_META = [
   { type:'card-grid', label:'카드 그리드', icon:'Layers', group:'컨텐츠', desc:'2~4열 일반 카드' },
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
+  { type:'badge-card', label:'배지 카드', icon:'File', group:'컨텐츠', desc:'상단 배지 + 설명 텍스트 카드' },
   { type:'process-flow', label:'프로세스 플로우', icon:'Flow', group:'프로세스', desc:'STEP 1 → 2 → 3 흐름' },
   { type:'numbered-list', label:'번호 리스트', icon:'List', group:'프로세스', desc:'번호 원형 + 상세 설명' },
   { type:'highlight-box', label:'하이라이트 박스', icon:'Quote', group:'컨텐츠', desc:'강조/인용 텍스트 박스' },
@@ -1076,6 +1095,7 @@ window.DEFAULT_DATA = {
     {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:''},
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
+  'badge-card': () => ({ badge:'배지 텍스트를 입력하세요', badgeColor:'#2F6BFF', desc:'설명을 입력하세요.' }),
   'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
@@ -2293,6 +2313,16 @@ function CompEditor({ comp, onChange }){
         <Field label="아이콘"><TextInput value={d.icon} onChange={(v)=>set('icon',v)}/></Field>
         <Field label="제목"><TextInput value={d.title} onChange={(v)=>set('title',v)}/></Field>
         <Field label="본문"><TextInput value={d.body} onChange={(v)=>set('body',v)} multiline/></Field>
+      </div>
+    );
+  }
+
+  if(t === 'badge-card'){
+    return (
+      <div>
+        <Field label="배지 텍스트"><TextInput value={d.badge} onChange={(v)=>set('badge',v)}/></Field>
+        <Field label="배지 색상"><ColorPicker value={d.badgeColor} onChange={(v)=>set('badgeColor',v)}/></Field>
+        <Field label="설명"><TextInput value={d.desc} onChange={(v)=>set('desc',v)} multiline/></Field>
       </div>
     );
   }
