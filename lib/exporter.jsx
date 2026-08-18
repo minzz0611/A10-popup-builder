@@ -7,12 +7,17 @@ const POPUP_CSS = `
   --blue:#2F6BFF;--blue-dark:#1451E0;--purple:#7B5CFA;
   --grad: linear-gradient(90deg,#7B5CFA 0%, #2FA8FF 100%);
   --grad-soft: linear-gradient(90deg,#eef0ff 0%, #eaf6ff 100%);
-  --ink:#1B2130;--sub:#5B6472;--mute:#9199A6;--line:#E6E9EF;--panel:#F4F5F7;
-  --card:#ffffff;--good:#12B886;--warn:#FF7A45;--danger:#F0416C;
+  --ink:#1B2130;--sub:#5B6472;--mute:#9199A6;--line:#E6E9EF;--panel:#F4F5F7;--panel-2:#EDEFF3;
+  --card:#ffffff;--good:#12B886;--warn:#FF7A45;--danger:#F0416C;--focus:#2F6BFF;
+  --shadow-sm: 0 1px 2px rgba(20,30,60,.05);
+  --shadow-md: 0 4px 12px rgba(20,30,60,.08);
+  --shadow-lg: 0 20px 50px rgba(20,30,60,.18);
+  --radius:14px;
   font-family:"Pretendard","Malgun Gothic","맑은 고딕",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
+button{font-family:inherit;}
 .host-page{padding:26px 30px;max-width:1180px;margin:0 auto;color:#9199A6;}
 .host-page h4{color:#5B6472;font-size:14px;margin:0 0 10px;}
 .host-page .host-block{background:#fff;border:1px solid var(--line);border-radius:12px;height:120px;margin-bottom:14px;}
@@ -140,6 +145,7 @@ async function buildFinalHtml(state){
   const dontShow = state.popup?.dontShowOption !== false;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -154,7 +160,7 @@ async function buildFinalHtml(state){
 <title>${escapeHtml(state.meta?.title || '안내 팝업')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${POPUP_CSS}</style>
-<style>.window{height:min(${windowHeight}px, 88vh);}</style>
+<style>.window{height:min(${windowHeight}px, 88vh);} .stage{max-width:${windowWidth}px;}</style>
 </head>
 <body>
 <div class="host-page">

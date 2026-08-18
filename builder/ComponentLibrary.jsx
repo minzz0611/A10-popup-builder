@@ -221,6 +221,11 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
 
   const iconBtn = {border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:13,borderRadius:5,flex:'none',display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22};
 
+  // 목차의 그룹명/섹션명/탭명 인라인 입력 - Enter를 누르면 포커스를 해제해 편집을 확정(저장)한다
+  const onEnterBlur = (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); }
+  };
+
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
@@ -283,6 +288,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
               value={sec.label}
               onClick={(e)=>{ e.stopPropagation(); selectThis(); }}
               onChange={(e)=>renameSection(sec.id, e.target.value)}
+              onKeyDown={onEnterBlur}
               placeholder="섹션 이름"
               style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'3px 0'}}
             />
@@ -319,7 +325,14 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
                 const navActive = (sec.navMode||'top') === opt.v;
                 return (
                   <button key={opt.v} title="탭 노출 방식"
-                    onClick={()=>onProjectUpdate({ sidebar: state.sidebar.map(s => s.id===sec.id ? { ...s, navMode: opt.v } : s) })}
+                    onClick={()=>{
+                      onProjectUpdate({ sidebar: state.sidebar.map(s => s.id===sec.id ? { ...s, navMode: opt.v } : s) });
+                      // 3뎁스(하위 탭) 설정을 바꾸는 시점에 미리보기도 해당 섹션·탭으로 이동시켜
+                      // 지금 바꾼 노출 방식이 어떻게 보이는지 바로 확인할 수 있게 한다.
+                      const keepTab = (activeSectionId === sec.id && activeTabId && tabs.some(t => t.id === activeTabId))
+                        ? activeTabId : (tabs[0]?.id || null);
+                      if(keepTab) onSelectTab(sec.id, keepTab);
+                    }}
                     style={{flex:1,padding:'4px 2px',fontSize:10,fontWeight:700,border:'1px solid var(--line)',borderRadius:6,background: navActive ? 'var(--grad)' : '#fff',color: navActive ? '#fff' : 'var(--mute)',cursor:'pointer'}}>
                     {opt.label}
                   </button>
@@ -335,6 +348,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
                     value={t.label}
                     onClick={()=>onSelectTab(sec.id, t.id)}
                     onChange={(e)=>renameTab(sec.id, t.id, e.target.value)}
+                    onKeyDown={onEnterBlur}
                     placeholder="하위 탭 이름"
                     style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:12,fontWeight: tActive?700:500,color: tActive ? 'var(--blue-dark)':'var(--sub)',padding:'6px 4px'}}
                   />
@@ -359,6 +373,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
           <input
             value={g}
             onChange={(e)=>renameGroup(g, e.target.value)}
+            onKeyDown={onEnterBlur}
             placeholder="상위 항목"
             style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 4px'}}
           />

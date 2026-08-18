@@ -114,6 +114,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -208,7 +209,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   if(activeSectionId === null){
     return (
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-        <div style={{maxWidth:1180, margin:'0 auto'}}>
+        <div style={{maxWidth:windowWidth, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
@@ -239,7 +240,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   // === DETAIL SCREEN (sidebar + content) ===
   return (
     <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-      <div style={{maxWidth:1180, margin:'0 auto'}}>
+      <div style={{maxWidth:windowWidth, margin:'0 auto'}}>
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
           {activeSec?.kind === 'cover' ? '🖼️ 표지 화면' : '📄 상세 화면'} · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>

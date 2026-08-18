@@ -58,7 +58,6 @@ const Icons = {
   Square: (p) => <IconSvg {...p} path="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />,
 };
 window.Icons = Icons;
-
 // Start templates. Each template returns a full projectState.
 
 function makeComp(type, data){
@@ -258,7 +257,6 @@ window.TEMPLATES = [
   { id:'release', title:'제품 릴리즈 노트', desc:'KPI + 프로세스 플로우 · 업데이트 안내에 적합', tags:['릴리즈','KPI','2개 섹션'], build: templateRelease },
   { id:'blank', title:'빈 팝업으로 시작', desc:'히어로 하나만 있는 최소 구성 · 자유롭게 채워보세요', tags:['빈 문서','최소'], build: templateBlank },
 ];
-
 // ============================================================
 // Popup component renderers
 // Each renderer receives { data, editing, onChange } and returns JSX.
@@ -615,7 +613,7 @@ function NumberedList({ data, editing, onChange }){
   return (
     <div>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{display:'flex',gap:14,padding:'14px 0',borderBottom: i < d.items.length-1 ? '1px solid var(--line)' : 'none'}}>
+        <div key={i} style={{display:'flex',gap:14,padding:'14px 0',alignItems:'center',borderBottom: i < d.items.length-1 ? '1px solid var(--line)' : 'none'}}>
           <div style={{flex:'none',width:30,height:30,borderRadius:'50%',background:'var(--grad)',color:'#fff',fontWeight:800,fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>{i+1}</div>
           <div style={{flex:1}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{fontSize:13.5,marginRight:6}}/>
@@ -687,7 +685,7 @@ function TableBlock({ data, editing, onChange }){
         {(d.rows||[]).map((row,r)=>(
           <tr key={r}>
             {row.map((cell,c)=>(
-              <td key={c} style={{padding:'10px 12px',borderBottom:'1px solid var(--line)',verticalAlign:'top', fontWeight: c===0?700:400, color: c===0?'var(--ink)':'var(--sub)', whiteSpace: c===0?'nowrap':'normal'}}>
+              <td key={c} style={{padding:'10px 12px',borderBottom:'1px solid var(--line)',verticalAlign:'middle', fontWeight: c===0?700:400, color: c===0?'var(--ink)':'var(--sub)', whiteSpace: c===0?'nowrap':'normal'}}>
                 <ET tag="span" value={cell} onChange={(v)=>updCell(r,c,v)} editing={editing} multiline/>
               </td>
             ))}
@@ -854,7 +852,7 @@ function VideoCards({ data, editing, onChange }){
 function HighlightBox({ data, editing, onChange }){
   const d = data;
   return (
-    <div style={{display:'flex',gap:10,background:'var(--grad-soft)',borderLeft:'4px solid var(--blue)',borderRadius:10,padding:'14px 18px',fontSize:12.5,color:'#1B2130',lineHeight:1.6}}>
+    <div style={{display:'flex',gap:10,alignItems:'center',background:'var(--grad-soft)',borderLeft:'4px solid var(--blue)',borderRadius:10,padding:'14px 18px',fontSize:12.5,color:'#1B2130',lineHeight:1.6}}>
       <ET tag="span" value={d.icon||'💡'} onChange={(v)=>onChange({...d, icon:v})} editing={editing} style={{fontSize:18,flexShrink:0}}/>
       <div>
         <ET tag="b" value={d.title} onChange={(v)=>onChange({...d, title:v})} editing={editing} style={{color:'var(--blue-dark)',display:'block',marginBottom:4,fontSize:13}}/>
@@ -1085,7 +1083,6 @@ window.DEFAULT_DATA = {
     badge:{ enabled:false, content:'1', bgColor:'#2882FF', textColor:'#FFFFFF' },
   }),
 };
-
 // Exporter: builds a self-contained HTML file (the final popup) + a JSON edit-state file.
 // Uses ReactDOM to render into a hidden DOM, then serializes outerHTML.
 
@@ -1095,12 +1092,17 @@ const POPUP_CSS = `
   --blue:#2F6BFF;--blue-dark:#1451E0;--purple:#7B5CFA;
   --grad: linear-gradient(90deg,#7B5CFA 0%, #2FA8FF 100%);
   --grad-soft: linear-gradient(90deg,#eef0ff 0%, #eaf6ff 100%);
-  --ink:#1B2130;--sub:#5B6472;--mute:#9199A6;--line:#E6E9EF;--panel:#F4F5F7;
-  --card:#ffffff;--good:#12B886;--warn:#FF7A45;--danger:#F0416C;
+  --ink:#1B2130;--sub:#5B6472;--mute:#9199A6;--line:#E6E9EF;--panel:#F4F5F7;--panel-2:#EDEFF3;
+  --card:#ffffff;--good:#12B886;--warn:#FF7A45;--danger:#F0416C;--focus:#2F6BFF;
+  --shadow-sm: 0 1px 2px rgba(20,30,60,.05);
+  --shadow-md: 0 4px 12px rgba(20,30,60,.08);
+  --shadow-lg: 0 20px 50px rgba(20,30,60,.18);
+  --radius:14px;
   font-family:"Pretendard","Malgun Gothic","맑은 고딕",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
+button{font-family:inherit;}
 .host-page{padding:26px 30px;max-width:1180px;margin:0 auto;color:#9199A6;}
 .host-page h4{color:#5B6472;font-size:14px;margin:0 0 10px;}
 .host-page .host-block{background:#fff;border:1px solid var(--line);border-radius:12px;height:120px;margin-bottom:14px;}
@@ -1228,6 +1230,7 @@ async function buildFinalHtml(state){
   const dontShow = state.popup?.dontShowOption !== false;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -1242,7 +1245,7 @@ async function buildFinalHtml(state){
 <title>${escapeHtml(state.meta?.title || '안내 팝업')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${POPUP_CSS}</style>
-<style>.window{height:min(${windowHeight}px, 88vh);}</style>
+<style>.window{height:min(${windowHeight}px, 88vh);} .stage{max-width:${windowWidth}px;}</style>
 </head>
 <body>
 <div class="host-page">
@@ -1406,7 +1409,6 @@ async function downloadZipBundle(state){
 
 window.downloadZipBundle = downloadZipBundle;
 window.buildFinalHtml = buildFinalHtml;
-
 // Right-click context menu for canvas components
 function ContextMenu({ x, y, onClose, actions }){
   const rUseEffect = React.useEffect;
@@ -1448,7 +1450,6 @@ function ContextMenu({ x, y, onClose, actions }){
   );
 }
 window.ContextMenu = ContextMenu;
-
 // Shown when a JSON edit-state file is loaded while a project is already
 // open. Lets the person either fully replace the current project (old
 // behavior) or pick specific pages (표지/섹션) to bring into it instead.
@@ -1534,7 +1535,6 @@ function ImportModal({ source, onCancel, onReplace, onImport }){
 }
 
 window.ImportModal = ImportModal;
-
 // Right-side property panel — edits data & style of selected component
 const { useState: pUseState } = React;
 
@@ -2552,7 +2552,6 @@ function PropertyPanel({ state, selectedId, activeSectionId, activeTabId, onSele
   );
 }
 window.PropertyPanel = PropertyPanel;
-
 // Left sidebar - unified panel: 목차(outline, top) + 컴포넌트(palette, bottom), resizable
 const { useState: lUseState, useRef: lUseRef } = React;
 
@@ -2776,6 +2775,11 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
 
   const iconBtn = {border:'none',background:'none',cursor:'pointer',color:'var(--mute)',padding:4,fontSize:13,borderRadius:5,flex:'none',display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22};
 
+  // 목차의 그룹명/섹션명/탭명 인라인 입력 - Enter를 누르면 포커스를 해제해 편집을 확정(저장)한다
+  const onEnterBlur = (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); }
+  };
+
   const rows = [];
   rows.push(
     <button key="hero" onClick={()=>onSelectSection(null)}
@@ -2838,6 +2842,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
               value={sec.label}
               onClick={(e)=>{ e.stopPropagation(); selectThis(); }}
               onChange={(e)=>renameSection(sec.id, e.target.value)}
+              onKeyDown={onEnterBlur}
               placeholder="섹션 이름"
               style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:13,fontWeight: active?700:600,color: (active && !activeTabId) ? 'var(--blue-dark)':'var(--ink)',padding:'3px 0'}}
             />
@@ -2874,7 +2879,14 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
                 const navActive = (sec.navMode||'top') === opt.v;
                 return (
                   <button key={opt.v} title="탭 노출 방식"
-                    onClick={()=>onProjectUpdate({ sidebar: state.sidebar.map(s => s.id===sec.id ? { ...s, navMode: opt.v } : s) })}
+                    onClick={()=>{
+                      onProjectUpdate({ sidebar: state.sidebar.map(s => s.id===sec.id ? { ...s, navMode: opt.v } : s) });
+                      // 3뎁스(하위 탭) 설정을 바꾸는 시점에 미리보기도 해당 섹션·탭으로 이동시켜
+                      // 지금 바꾼 노출 방식이 어떻게 보이는지 바로 확인할 수 있게 한다.
+                      const keepTab = (activeSectionId === sec.id && activeTabId && tabs.some(t => t.id === activeTabId))
+                        ? activeTabId : (tabs[0]?.id || null);
+                      if(keepTab) onSelectTab(sec.id, keepTab);
+                    }}
                     style={{flex:1,padding:'4px 2px',fontSize:10,fontWeight:700,border:'1px solid var(--line)',borderRadius:6,background: navActive ? 'var(--grad)' : '#fff',color: navActive ? '#fff' : 'var(--mute)',cursor:'pointer'}}>
                     {opt.label}
                   </button>
@@ -2890,6 +2902,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
                     value={t.label}
                     onClick={()=>onSelectTab(sec.id, t.id)}
                     onChange={(e)=>renameTab(sec.id, t.id, e.target.value)}
+                    onKeyDown={onEnterBlur}
                     placeholder="하위 탭 이름"
                     style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:12,fontWeight: tActive?700:500,color: tActive ? 'var(--blue-dark)':'var(--sub)',padding:'6px 4px'}}
                   />
@@ -2914,6 +2927,7 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
           <input
             value={g}
             onChange={(e)=>renameGroup(g, e.target.value)}
+            onKeyDown={onEnterBlur}
             placeholder="상위 항목"
             style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',fontSize:10,color:'var(--mute)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.03em',padding:'2px 6px 4px'}}
           />
@@ -2943,7 +2957,6 @@ function SectionsTree({ state, activeSectionId, activeTabId, onSelectSection, on
 }
 
 window.ComponentLibrary = ComponentLibrary;
-
 // Center canvas - shows the popup preview WITH editing affordances (drag, select, resize handles)
 
 const { useState: cUseState, useRef: cUseRef, useEffect: cUseEffect } = React;
@@ -3060,6 +3073,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
+  const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -3154,7 +3168,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   if(activeSectionId === null){
     return (
       <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-        <div style={{maxWidth:1180, margin:'0 auto'}}>
+        <div style={{maxWidth:windowWidth, margin:'0 auto'}}>
           <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
             🏠 표지 (팝업 첫 진입 시 표시)
           </div>
@@ -3185,7 +3199,7 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   // === DETAIL SCREEN (sidebar + content) ===
   return (
     <div style={{background:'#EBEEF3', padding:'40px 20px', minHeight:'100%'}}>
-      <div style={{maxWidth:1180, margin:'0 auto'}}>
+      <div style={{maxWidth:windowWidth, margin:'0 auto'}}>
         <div style={{textAlign:'center', marginBottom:14, color:'var(--mute)', fontSize:12, fontWeight:600, letterSpacing:'.02em'}}>
           {activeSec?.kind === 'cover' ? '🖼️ 표지 화면' : '📄 상세 화면'} · {activeSec?.label}{activeTab ? ` · ${activeTab.label}` : ''}
         </div>
@@ -3306,25 +3320,32 @@ function PopupFooter({ state }){
 window.Canvas = Canvas;
 window.SidebarNav = SidebarNav;
 window.PopupFooter = PopupFooter;
-
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
   const windowHeight = state.popup?.windowHeight ?? 700;
+  const windowWidth = state.popup?.windowWidth ?? 1180;
   const [draftHeight, setDraftHeight] = tUseState(windowHeight);
+  const [draftWidth, setDraftWidth] = tUseState(windowWidth);
 
   // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
-  React.useEffect(()=>{ if(showHeightPopover) setDraftHeight(windowHeight); }, [showHeightPopover]);
+  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); } }, [showHeightPopover]);
 
   const commitHeight = (v) => {
     const n = Number(v);
     const clamped = Math.max(480, Math.min(900, isNaN(n) ? 700 : n));
     onUpdateWindowHeight(clamped);
     setDraftHeight(clamped);
+  };
+  const commitWidth = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(600, Math.min(1600, isNaN(n) ? 1180 : n));
+    onUpdateWindowWidth(clamped);
+    setDraftWidth(clamped);
   };
 
   React.useEffect(()=>{
@@ -3394,18 +3415,20 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 
         <div style={{position:'relative'}}>
-          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 높이 조절">
-            ↕ 팝업 높이
+          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 크기 조절">
+            ⛶ 팝업 크기
           </button>
           {showHeightPopover && (
             <>
               <div style={{position:'fixed',inset:0,zIndex:10}} onClick={()=>setShowHeightPopover(false)}/>
               <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
-                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
+                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 크기</div>
                 <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
-                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
+                  표지·상세 화면이 항상 같은 크기를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
                 </div>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
+
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>높이</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                   <input type="range" min={480} max={900} step={10}
                     value={Number(draftHeight) || 480}
                     onChange={(e)=>setDraftHeight(Number(e.target.value))}
@@ -3422,14 +3445,34 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
                     <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
                   </div>
                 </div>
+
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>가로 길이</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="range" min={600} max={1600} step={10}
+                    value={Number(draftWidth) || 600}
+                    onChange={(e)=>setDraftWidth(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={600} max={1600}
+                      value={draftWidth}
+                      onChange={(e)=>{
+                        const raw = e.target.value;
+                        setDraftWidth(raw === '' ? '' : Number(raw));
+                      }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitWidth(draftWidth); }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+
                 <div style={{display:'flex',gap:6,marginTop:10}}>
-                  <button onClick={()=>commitHeight(draftHeight)}
+                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); }}
                     style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
                     저장
                   </button>
-                  <button onClick={()=>commitHeight(700)}
+                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); }}
                     style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
-                    기본값(700px)
+                    기본값
                   </button>
                 </div>
               </div>
@@ -3482,7 +3525,6 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
 }
 
 window.Toolbar = Toolbar;
-
 // Full popup preview modal - shows the final output exactly as end users will see it.
 // Non-editable: pure output.
 const { useState: pmUseState } = React;
@@ -3496,6 +3538,7 @@ function PreviewModal({ state, onClose }){
     return sec?.tabs?.[0]?.id || null;
   });
   const windowHeight = state.popup?.windowHeight ?? 700;
+  const windowWidth = state.popup?.windowWidth ?? 1180;
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
 
   const showDetail = () => {
@@ -3524,7 +3567,7 @@ function PreviewModal({ state, onClose }){
         {window.Icons.X({size:14})} 미리보기 닫기
       </button>
 
-      <div style={{maxWidth:1180, width:'100%', margin:'0 auto'}}>
+      <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
           <div style={{flex:'none', position:'relative', height:58}}>
             {screen === 'detail' && (
@@ -3609,7 +3652,6 @@ function HeroWithCta({ comp, onCta }){
 }
 
 window.PreviewModal = PreviewModal;
-
 // Template selection screen shown on first entry or when creating a new project.
 const { useState: tgUseState } = React;
 
@@ -3770,7 +3812,6 @@ function TemplatePreview({ id }){
 }
 
 window.TemplateGallery = TemplateGallery;
-
 // ============================================================
 // PopBuilder root
 // ============================================================
@@ -4033,6 +4074,10 @@ function App(){
   // 팝업 창 높이 — 표지·상세 화면이 공유하는 하나의 값
   const handleUpdateWindowHeight = (h) => {
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
+  };
+
+  const handleUpdateWindowWidth = (w) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, windowWidth: w } }));
   };
 
   // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
@@ -4305,6 +4350,7 @@ function App(){
         onNewProject={newProject}
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
+        onUpdateWindowWidth={handleUpdateWindowWidth}
         editorMode={editorMode}
         onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}

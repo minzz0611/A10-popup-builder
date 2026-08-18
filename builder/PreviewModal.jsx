@@ -11,6 +11,7 @@ function PreviewModal({ state, onClose }){
     return sec?.tabs?.[0]?.id || null;
   });
   const windowHeight = state.popup?.windowHeight ?? 700;
+  const windowWidth = state.popup?.windowWidth ?? 1180;
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
 
   const showDetail = () => {
@@ -39,7 +40,7 @@ function PreviewModal({ state, onClose }){
         {window.Icons.X({size:14})} 미리보기 닫기
       </button>
 
-      <div style={{maxWidth:1180, width:'100%', margin:'0 auto'}}>
+      <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
           <div style={{flex:'none', position:'relative', height:58}}>
             {screen === 'detail' && (

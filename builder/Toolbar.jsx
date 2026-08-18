@@ -1,21 +1,29 @@
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
   const windowHeight = state.popup?.windowHeight ?? 700;
+  const windowWidth = state.popup?.windowWidth ?? 1180;
   const [draftHeight, setDraftHeight] = tUseState(windowHeight);
+  const [draftWidth, setDraftWidth] = tUseState(windowWidth);
 
   // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
-  React.useEffect(()=>{ if(showHeightPopover) setDraftHeight(windowHeight); }, [showHeightPopover]);
+  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); } }, [showHeightPopover]);
 
   const commitHeight = (v) => {
     const n = Number(v);
     const clamped = Math.max(480, Math.min(900, isNaN(n) ? 700 : n));
     onUpdateWindowHeight(clamped);
     setDraftHeight(clamped);
+  };
+  const commitWidth = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(600, Math.min(1600, isNaN(n) ? 1180 : n));
+    onUpdateWindowWidth(clamped);
+    setDraftWidth(clamped);
   };
 
   React.useEffect(()=>{
@@ -85,18 +93,20 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
         <div style={{height:20,width:1,background:'var(--line)',margin:'0 4px'}}/>
 
         <div style={{position:'relative'}}>
-          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 높이 조절">
-            ↕ 팝업 높이
+          <button style={btnBase} onClick={()=>setShowHeightPopover(v=>!v)} title="팝업 창 크기 조절">
+            ⛶ 팝업 크기
           </button>
           {showHeightPopover && (
             <>
               <div style={{position:'fixed',inset:0,zIndex:10}} onClick={()=>setShowHeightPopover(false)}/>
               <div style={{position:'absolute',top:'calc(100% + 8px)',left:0,width:236,background:'#fff',border:'1px solid var(--line)',borderRadius:10,boxShadow:'var(--shadow-lg)',padding:14,zIndex:11}}>
-                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 높이</div>
+                <div style={{fontSize:12,fontWeight:800,color:'var(--ink)',marginBottom:2}}>팝업 창 크기</div>
                 <div style={{fontSize:11,color:'var(--mute)',marginBottom:10,lineHeight:1.5}}>
-                  표지·상세 화면이 항상 같은 높이를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
+                  표지·상세 화면이 항상 같은 크기를 공유해요. 내용이 넘치면 창 크기는 그대로 두고 안에서 스크롤돼요. 값을 정하고 <b>저장</b>을 눌러야 반영돼요.
                 </div>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
+
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>높이</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                   <input type="range" min={480} max={900} step={10}
                     value={Number(draftHeight) || 480}
                     onChange={(e)=>setDraftHeight(Number(e.target.value))}
@@ -113,14 +123,34 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
                     <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
                   </div>
                 </div>
+
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>가로 길이</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="range" min={600} max={1600} step={10}
+                    value={Number(draftWidth) || 600}
+                    onChange={(e)=>setDraftWidth(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={600} max={1600}
+                      value={draftWidth}
+                      onChange={(e)=>{
+                        const raw = e.target.value;
+                        setDraftWidth(raw === '' ? '' : Number(raw));
+                      }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitWidth(draftWidth); }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+
                 <div style={{display:'flex',gap:6,marginTop:10}}>
-                  <button onClick={()=>commitHeight(draftHeight)}
+                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); }}
                     style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
                     저장
                   </button>
-                  <button onClick={()=>commitHeight(700)}
+                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); }}
                     style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
-                    기본값(700px)
+                    기본값
                   </button>
                 </div>
               </div>

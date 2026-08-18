@@ -354,7 +354,7 @@ function NumberedList({ data, editing, onChange }){
   return (
     <div>
       {(d.items||[]).map((it,i)=>(
-        <div key={i} style={{display:'flex',gap:14,padding:'14px 0',borderBottom: i < d.items.length-1 ? '1px solid var(--line)' : 'none'}}>
+        <div key={i} style={{display:'flex',gap:14,padding:'14px 0',alignItems:'center',borderBottom: i < d.items.length-1 ? '1px solid var(--line)' : 'none'}}>
           <div style={{flex:'none',width:30,height:30,borderRadius:'50%',background:'var(--grad)',color:'#fff',fontWeight:800,fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>{i+1}</div>
           <div style={{flex:1}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{fontSize:13.5,marginRight:6}}/>
@@ -426,7 +426,7 @@ function TableBlock({ data, editing, onChange }){
         {(d.rows||[]).map((row,r)=>(
           <tr key={r}>
             {row.map((cell,c)=>(
-              <td key={c} style={{padding:'10px 12px',borderBottom:'1px solid var(--line)',verticalAlign:'top', fontWeight: c===0?700:400, color: c===0?'var(--ink)':'var(--sub)', whiteSpace: c===0?'nowrap':'normal'}}>
+              <td key={c} style={{padding:'10px 12px',borderBottom:'1px solid var(--line)',verticalAlign:'middle', fontWeight: c===0?700:400, color: c===0?'var(--ink)':'var(--sub)', whiteSpace: c===0?'nowrap':'normal'}}>
                 <ET tag="span" value={cell} onChange={(v)=>updCell(r,c,v)} editing={editing} multiline/>
               </td>
             ))}
@@ -593,7 +593,7 @@ function VideoCards({ data, editing, onChange }){
 function HighlightBox({ data, editing, onChange }){
   const d = data;
   return (
-    <div style={{display:'flex',gap:10,background:'var(--grad-soft)',borderLeft:'4px solid var(--blue)',borderRadius:10,padding:'14px 18px',fontSize:12.5,color:'#1B2130',lineHeight:1.6}}>
+    <div style={{display:'flex',gap:10,alignItems:'center',background:'var(--grad-soft)',borderLeft:'4px solid var(--blue)',borderRadius:10,padding:'14px 18px',fontSize:12.5,color:'#1B2130',lineHeight:1.6}}>
       <ET tag="span" value={d.icon||'💡'} onChange={(v)=>onChange({...d, icon:v})} editing={editing} style={{fontSize:18,flexShrink:0}}/>
       <div>
         <ET tag="b" value={d.title} onChange={(v)=>onChange({...d, title:v})} editing={editing} style={{color:'var(--blue-dark)',display:'block',marginBottom:4,fontSize:13}}/>

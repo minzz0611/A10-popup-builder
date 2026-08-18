@@ -262,6 +262,10 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowHeight: h } }));
   };
 
+  const handleUpdateWindowWidth = (w) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, windowWidth: w } }));
+  };
+
   // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
   const handleUpdateCustomHtml = (id, html) => {
     commit(prev => ({
@@ -532,6 +536,7 @@ function App(){
         onNewProject={newProject}
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
+        onUpdateWindowWidth={handleUpdateWindowWidth}
         editorMode={editorMode}
         onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}
