@@ -756,6 +756,16 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'badge-card'){
+    return (
+      <div>
+        <Field label="배지 텍스트"><TextInput value={d.badge} onChange={(v)=>set('badge',v)}/></Field>
+        <Field label="배지 색상"><ColorPicker value={d.badgeColor} onChange={(v)=>set('badgeColor',v)}/></Field>
+        <Field label="설명"><TextInput value={d.desc} onChange={(v)=>set('desc',v)} multiline/></Field>
+      </div>
+    );
+  }
+
   if(t === 'text-block'){
     return (
       <div>
