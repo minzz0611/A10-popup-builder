@@ -3245,7 +3245,9 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
             onDragOver={handleContainerDragOver}
             onDrop={handleContainerDrop}
           >
-            <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+            <div style={{flex:'none', position:'relative', height:46}}>
+              <button style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'default',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}}>✕</button>
+            </div>
             <div style={{flex:1, minHeight:0, overflowY:'auto'}}>
               {componentList.length === 0 && (
                 <div style={{padding:'80px 40px', textAlign:'center', border:'2px dashed var(--line)', borderRadius:12, color:'var(--mute)'}}>
