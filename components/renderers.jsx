@@ -217,7 +217,8 @@ function HeroBlock({ data, editing, onChange }){
         </div>
       )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
-        style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
+        className="grad-text"
+        style={{fontSize:23,margin:'0 0 7px',fontWeight:800}}/>
       {d.subtitle && (
         <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
           style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
