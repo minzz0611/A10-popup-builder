@@ -42,15 +42,15 @@ function PreviewModal({ state, onClose }){
 
       <div style={{maxWidth:windowWidth, width:'100%', margin:'0 auto'}}>
         <div style={{background:'#fff', borderRadius:12, boxShadow:'0 30px 70px rgba(0,0,0,.4)', overflow:'hidden', height:`min(${windowHeight}px, 88vh)`, display:'flex', flexDirection:'column', position:'relative'}}>
-          <div style={{flex:'none', position:'relative', height:58}}>
+          <div style={{flex:'none', position:'relative', height:46}}>
             {screen === 'detail' && (
               <button onClick={showHero}
-                style={{position:'absolute',top:12,left:20,height:34,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12.5,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 14px'}}>
+                style={{position:'absolute',top:8,left:20,height:30,borderRadius:999,border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,fontWeight:700,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',gap:5,padding:'0 13px'}}>
                 ‹ 처음으로
               </button>
             )}
             <button onClick={onClose}
-              style={{position:'absolute',top:12,right:20,width:34,height:34,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:18,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              style={{position:'absolute',top:8,right:20,width:30,height:30,borderRadius:'50%',border:'none',background:'#F1F2F5',color:'#66707F',fontSize:16,cursor:'pointer',zIndex:5,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
           </div>
 
           {screen === 'hero' ? (
