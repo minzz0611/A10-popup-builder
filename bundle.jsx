@@ -476,7 +476,8 @@ function HeroBlock({ data, editing, onChange }){
         </div>
       )}
       <ET tag="h1" value={d.title} onChange={(v)=>upd('title',v)} editing={editing}
-        style={{fontSize:23,margin:'0 0 7px',fontWeight:800,background:'var(--grad)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}/>
+        className="grad-text"
+        style={{fontSize:23,margin:'0 0 7px',fontWeight:800}}/>
       {d.subtitle && (
         <ET tag="h2" value={d.subtitle} onChange={(v)=>upd('subtitle',v)} editing={editing}
           style={{fontSize:14.5,margin:'0 0 9px',fontWeight:700,color:'var(--ink)'}}/>
@@ -1139,6 +1140,7 @@ const POPUP_CSS = `
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:#dfe3ea;color:var(--ink);height:100%;}
 button{font-family:inherit;}
+.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .host-page{padding:26px 30px;max-width:1180px;margin:0 auto;color:#9199A6;}
 .host-page h4{color:#5B6472;font-size:14px;margin:0 0 10px;}
 .host-page .host-block{background:#fff;border:1px solid var(--line);border-radius:12px;height:120px;margin-bottom:14px;}
