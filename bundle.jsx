@@ -56,6 +56,7 @@ const Icons = {
   MessageCircle: (p) => <IconSvg {...p} path="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
   File: (p) => <IconSvg {...p} path="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" />,
   Square: (p) => <IconSvg {...p} path="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />,
+  Minus: (p) => <IconSvg {...p} path="M5 12h14" />,
 };
 window.Icons = Icons;
 // Start templates. Each template returns a full projectState.
@@ -1002,7 +1003,19 @@ function ShapeBlock({ data, editing, onChange }){
 }
 
 // ============================================================
-// 14. BADGE CARD — 상단 배지 + 설명 텍스트 카드 (1~3열 그리드)
+// 14. DIVIDER — 가로 구분선
+// ============================================================
+function Divider({ data, editing, onChange }){
+  const d = data;
+  return (
+    <div style={{padding: editing ? '4px 0' : 0}}>
+      <hr style={{border:'none',borderTop:`${d.thickness||1}px ${d.dashed?'dashed':'solid'} ${d.color||'#E6E9EF'}`,margin:0}}/>
+    </div>
+  );
+}
+
+// ============================================================
+// 15. BADGE CARD — 상단 배지 + 설명 텍스트 카드 (1~3열 그리드)
 // ============================================================
 function BadgeCard({ data, editing, onChange }){
   const d = data;
@@ -1046,6 +1059,7 @@ window.RENDERERS = {
   'text-block': TextBlock,
   'shape': ShapeBlock,
   'badge-card': BadgeCard,
+  'divider': Divider,
 };
 
 window.COMPONENT_META = [
@@ -1059,6 +1073,7 @@ window.COMPONENT_META = [
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
   { type:'badge-card', label:'배지 카드', icon:'File', group:'컨텐츠', desc:'배지 + 설명, 1~3열 그리드' },
+  { type:'divider', label:'구분선', icon:'Minus', group:'컨텐츠', desc:'섹션을 나누는 가로선' },
   { type:'process-flow', label:'프로세스 플로우', icon:'Flow', group:'프로세스', desc:'STEP 1 → 2 → 3 흐름' },
   { type:'numbered-list', label:'번호 리스트', icon:'List', group:'프로세스', desc:'번호 원형 + 상세 설명' },
   { type:'highlight-box', label:'하이라이트 박스', icon:'Quote', group:'컨텐츠', desc:'강조/인용 텍스트 박스' },
@@ -1122,6 +1137,7 @@ window.DEFAULT_DATA = {
     {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,gradientFrom:'#5601FF',gradientTo:'#2882FF',desc:'설명을 입력하세요.'},
     {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,gradientFrom:'#5601FF',gradientTo:'#2882FF',desc:'설명을 입력하세요.'},
   ]}),
+  'divider': () => ({ color:'#E6E9EF', thickness:1, dashed:false }),
   'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
@@ -1171,8 +1187,13 @@ button{font-family:inherit;}
 .screen{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;}
 .screen.active{display:flex;}
 #heroScreen{overflow-y:auto;}
-.body-wrap{display:flex;flex:1;min-height:0;border-top:1px solid var(--line);}
-.side-nav{width:230px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow-y:auto;}
+.body-wrap{display:flex;flex:1;min-height:0;border-top:1px solid var(--line);position:relative;}
+.side-nav{width:${sidebarWidth}px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow:hidden;transition:width .18s ease, padding .18s ease;}
+.side-nav-inner{width:${sidebarWidth-28}px;height:100%;overflow-y:auto;}
+.side-nav.collapsed{width:0;padding-left:0;padding-right:0;border-right:none;}
+.side-nav-toggle{position:absolute;top:16px;left:${sidebarWidth}px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;transition:left .18s ease;}
+.side-nav-toggle:hover{background:var(--panel);}
+.side-nav-toggle.collapsed{left:0;transform:translateX(-50%) rotate(180deg);}
 .side-nav .grp-title{font-size:12px;color:#9199A6;font-weight:700;padding:8px 10px 4px;letter-spacing:.02em;}
 .side-nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:11px 12px;border-radius:10px;font-size:14.5px;color:var(--sub);cursor:pointer;font-weight:600;margin-bottom:2px;}
 .side-nav button:hover{background:#EAECF1;color:var(--ink);}
@@ -1287,6 +1308,7 @@ async function buildFinalHtml(state){
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
   const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230; // 상세 화면 좌측 사이드바(목차) 너비
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -1327,7 +1349,8 @@ async function buildFinalHtml(state){
       ${hasDetail ? `
       <div class="screen" id="detailScreen">
         <div class="body-wrap">
-          <nav class="side-nav">${sidebarHtml}</nav>
+          <nav class="side-nav" id="sideNav"><div class="side-nav-inner">${sidebarHtml}</div></nav>
+          <button class="side-nav-toggle" id="sideNavToggle" onclick="toggleSideNav()" title="목차 접기/펼치기">&#8249;</button>
           <div class="content"><div style="height:${topGap}px"></div>${panelsHtml}</div>
         </div>
       </div>` : ''}
@@ -1415,6 +1438,12 @@ function closeVideoLightbox(){
   v.removeAttribute('src');
   v.load();
   document.getElementById('videoLightbox').classList.remove('show');
+}
+function toggleSideNav(){
+  var nav = document.getElementById('sideNav');
+  var btn = document.getElementById('sideNavToggle');
+  var collapsed = nav.classList.toggle('collapsed');
+  btn.classList.toggle('collapsed', collapsed);
 }
 var DONT_SHOW_KEY = 'popbuilder_${(state.meta?.title||'popup').replace(/[^a-z0-9]/gi,'_')}_dont_show';
 function onDontShowChange(checked){
@@ -2383,6 +2412,20 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'divider'){
+    return (
+      <div>
+        <Field label="색상"><ColorPicker value={d.color} onChange={(v)=>set('color',v)}/></Field>
+        <Field label={`두께 (${d.thickness||1}px)`}>
+          <input type="range" min={1} max={6} step={1} value={d.thickness||1}
+            onChange={(e)=>set('thickness',Number(e.target.value))} style={{width:'100%'}}/>
+        </Field>
+        <Field label=" "><Toggle value={!!d.dashed} onChange={(v)=>set('dashed',v)} label="점선으로 표시"/></Field>
+      </div>
+    );
+  }
+
+
   if(t === 'highlight-box'){
     return (
       <div>
@@ -3210,12 +3253,14 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = cUseState(false); // 편집 중 접기/펼치기 미리보기 (저장되지 않음)
 
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
   const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230; // 상세 화면 좌측 사이드바(목차) 너비
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -3355,11 +3400,19 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           </div>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
-            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
-              <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
-                onSelect={(id)=>onSelectSection && onSelectSection(id)}
-                onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
+            <nav style={{width: sidebarCollapsed ? 0 : sidebarWidth, flex:'none', background:'var(--panel)', padding: sidebarCollapsed ? 0 : '22px 14px', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--line)', overflow:'hidden', transition:'width .18s ease, padding .18s ease'}}>
+              <div style={{width: sidebarWidth - 28, overflowY:'auto', height:'100%'}}>
+                <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
+                  onSelect={(id)=>onSelectSection && onSelectSection(id)}
+                  onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
+              </div>
             </nav>
+            <button
+              onClick={(e)=>{ e.stopPropagation(); setSidebarCollapsed(v=>!v); }}
+              title={sidebarCollapsed ? '목차 펼치기' : '목차 접기'}
+              style={{position:'absolute', top:16, left: sidebarCollapsed ? 0 : sidebarWidth, transform:'translateX(-50%) rotate('+(sidebarCollapsed?180:0)+'deg)', width:22, height:22, borderRadius:'50%', border:'1px solid var(--line)', background:'#fff', color:'var(--sub)', fontSize:12, cursor:'pointer', zIndex:3, display:'flex', alignItems:'center', justifyContent:'center', transition:'left .18s ease'}}>
+              ‹
+            </button>
             {/* Content editable */}
             <div style={{flex:1, padding:'0 44px 20px', overflowY:'auto'}}
               onDragOver={handleContainerDragOver}
@@ -3471,17 +3524,19 @@ window.PopupFooter = PopupFooter;
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, onUpdateSidebarWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230;
   const [draftHeight, setDraftHeight] = tUseState(windowHeight);
   const [draftWidth, setDraftWidth] = tUseState(windowWidth);
+  const [draftSidebarWidth, setDraftSidebarWidth] = tUseState(sidebarWidth);
 
   // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
-  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); } }, [showHeightPopover]);
+  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); setDraftSidebarWidth(sidebarWidth); } }, [showHeightPopover]);
 
   const commitHeight = (v) => {
     const n = Number(v);
@@ -3494,6 +3549,12 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
     const clamped = Math.max(600, Math.min(1600, isNaN(n) ? 1180 : n));
     onUpdateWindowWidth(clamped);
     setDraftWidth(clamped);
+  };
+  const commitSidebarWidth = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(160, Math.min(320, isNaN(n) ? 230 : n));
+    onUpdateSidebarWidth(clamped);
+    setDraftSidebarWidth(clamped);
   };
 
   React.useEffect(()=>{
@@ -3613,12 +3674,31 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
                   </div>
                 </div>
 
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>사이드바(목차) 너비</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                  <input type="range" min={160} max={320} step={10}
+                    value={Number(draftSidebarWidth) || 160}
+                    onChange={(e)=>setDraftSidebarWidth(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={160} max={320}
+                      value={draftSidebarWidth}
+                      onChange={(e)=>{
+                        const raw = e.target.value;
+                        setDraftSidebarWidth(raw === '' ? '' : Number(raw));
+                      }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitSidebarWidth(draftSidebarWidth); }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+
                 <div style={{display:'flex',gap:6,marginTop:10}}>
-                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); }}
+                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); commitSidebarWidth(draftSidebarWidth); }}
                     style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
                     저장
                   </button>
-                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); }}
+                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); commitSidebarWidth(230); }}
                     style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
                     기본값
                   </button>
@@ -3645,7 +3725,8 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
         <button style={btnBase} onClick={onNewProject} title="새 프로젝트">
           {window.Icons.File({size:14})} 새로 만들기
         </button>
-        <button style={btnBase} onClick={()=>fileRef.current && fileRef.current.click()}>
+        <button style={btnBase} onClick={()=>fileRef.current && fileRef.current.click()}
+          title="ZIP 다운로드 시 결과물 HTML과 함께 저장되는 편집용 JSON 파일을 불러와 이어서 편집할 수 있어요">
           {window.Icons.Upload({size:14})} JSON 불러오기
         </button>
         <input ref={fileRef} type="file" accept=".json,application/json" style={{display:'none'}} onChange={(e)=>{
@@ -3658,7 +3739,7 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
           rd.readAsText(f);
           e.target.value = '';
         }}/>
-        <button style={btnBase} onClick={onSave}>
+        <button style={btnBase} onClick={onSave} title="지금까지 작업한 내용을 이 PC(브라우저)에 저장해요. 다른 PC나 브라우저에서는 불러올 수 없어요">
           {window.Icons.Save({size:14})} 저장
         </button>
         <button style={btnBase} onClick={onOpenPreview}>
@@ -3688,6 +3769,8 @@ function PreviewModal({ state, onClose }){
   });
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230;
+  const [sidebarCollapsed, setSidebarCollapsed] = pmUseState(false);
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
 
   // 카드 컴포넌트(예: 동영상 카드)가 클릭 시 호출할 수 있도록 전역에 노출 — 편집 캔버스에는 없는, 미리보기 전용 실제 동작
@@ -3755,11 +3838,17 @@ function PreviewModal({ state, onClose }){
               })}
             </div>
           ) : (
-            <div style={{display:'flex',flex:1,minHeight:0,borderTop:'1px solid var(--line)'}}>
-              <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
-                <window.SidebarNav state={state} activeSectionId={activeSection} activeTabId={activeTab}
-                  onSelect={selectSection} onSelectTab={(secId,tabId)=>{ if(secId===activeSection) setActiveTab(tabId); }}/>
+            <div style={{position:'relative',display:'flex',flex:1,minHeight:0,borderTop:'1px solid var(--line)'}}>
+              <nav style={{width: sidebarCollapsed ? 0 : sidebarWidth, flex:'none', background:'var(--panel)', padding: sidebarCollapsed ? 0 : '22px 14px', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--line)', overflow:'hidden', transition:'width .18s ease, padding .18s ease'}}>
+                <div style={{width: sidebarWidth - 28, height:'100%', overflowY:'auto'}}>
+                  <window.SidebarNav state={state} activeSectionId={activeSection} activeTabId={activeTab}
+                    onSelect={selectSection} onSelectTab={(secId,tabId)=>{ if(secId===activeSection) setActiveTab(tabId); }}/>
+                </div>
               </nav>
+              <button onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed ? '목차 펼치기' : '목차 접기'}
+                style={{position:'absolute',top:16,left: sidebarCollapsed ? 0 : sidebarWidth,transform:`translateX(-50%) rotate(${sidebarCollapsed?180:0}deg)`,width:22,height:22,borderRadius:'50%',border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,cursor:'pointer',zIndex:6,display:'flex',alignItems:'center',justifyContent:'center',transition:'left .18s ease'}}>
+                ‹
+              </button>
               <div style={{flex:1, padding:'18px 44px 20px', overflowY:'auto', minWidth:0}}>
                 {!!(activeSec?.tabs?.length) && (activeSec.navMode==='top' || activeSec.navMode==='both' || !activeSec.navMode) && (
                   <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}}>
@@ -4245,6 +4334,11 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowWidth: w } }));
   };
 
+  // 상세 화면 좌측 사이드바(목차) 가로 너비
+  const handleUpdateSidebarWidth = (w) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, sidebarWidth: w } }));
+  };
+
   // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
   const handleUpdateCustomHtml = (id, html) => {
     commit(prev => ({
@@ -4516,6 +4610,7 @@ function App(){
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
         onUpdateWindowWidth={handleUpdateWindowWidth}
+        onUpdateSidebarWidth={handleUpdateSidebarWidth}
         editorMode={editorMode}
         onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}
