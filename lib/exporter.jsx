@@ -37,10 +37,10 @@ button{font-family:inherit;}
 .screen.active{display:flex;}
 #heroScreen{overflow-y:auto;}
 .body-wrap{display:flex;flex:1;min-height:0;border-top:1px solid var(--line);position:relative;}
-.side-nav{width:${sidebarWidth}px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow:hidden;transition:width .18s ease, padding .18s ease;}
-.side-nav-inner{width:${sidebarWidth-28}px;height:100%;overflow-y:auto;}
+.side-nav{width:230px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow:hidden;transition:width .18s ease, padding .18s ease;}
+.side-nav-inner{width:202px;height:100%;overflow-y:auto;}
 .side-nav.collapsed{width:0;padding-left:0;padding-right:0;border-right:none;}
-.side-nav-toggle{position:absolute;top:16px;left:${sidebarWidth}px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;transition:left .18s ease;}
+.side-nav-toggle{position:absolute;top:16px;left:230px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;transition:left .18s ease;}
 .side-nav-toggle:hover{background:var(--panel);}
 .side-nav-toggle.collapsed{left:0;transform:translateX(-50%) rotate(180deg);}
 .side-nav .grp-title{font-size:12px;color:#9199A6;font-weight:700;padding:8px 10px 4px;letter-spacing:.02em;}
@@ -172,7 +172,7 @@ async function buildFinalHtml(state){
 <title>${escapeHtml(state.meta?.title || '안내 팝업')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${POPUP_CSS}</style>
-<style>.window{height:min(${windowHeight}px, 88vh);} .stage{max-width:${windowWidth}px;}</style>
+<style>.window{height:min(${windowHeight}px, 88vh);} .stage{max-width:${windowWidth}px;} .side-nav{width:${sidebarWidth}px;} .side-nav-inner{width:${sidebarWidth-28}px;} .side-nav-toggle{left:${sidebarWidth}px;}</style>
 </head>
 <body>
 <div class="host-page">
