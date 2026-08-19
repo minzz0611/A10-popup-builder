@@ -766,6 +766,20 @@ function CompEditor({ comp, onChange }){
     );
   }
 
+  if(t === 'divider'){
+    return (
+      <div>
+        <Field label="색상"><ColorPicker value={d.color} onChange={(v)=>set('color',v)}/></Field>
+        <Field label={`두께 (${d.thickness||1}px)`}>
+          <input type="range" min={1} max={6} step={1} value={d.thickness||1}
+            onChange={(e)=>set('thickness',Number(e.target.value))} style={{width:'100%'}}/>
+        </Field>
+        <Field label=" "><Toggle value={!!d.dashed} onChange={(v)=>set('dashed',v)} label="점선으로 표시"/></Field>
+      </div>
+    );
+  }
+
+
   if(t === 'highlight-box'){
     return (
       <div>

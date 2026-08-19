@@ -743,7 +743,19 @@ function ShapeBlock({ data, editing, onChange }){
 }
 
 // ============================================================
-// 14. BADGE CARD — 상단 배지 + 설명 텍스트 카드 (1~3열 그리드)
+// 14. DIVIDER — 가로 구분선
+// ============================================================
+function Divider({ data, editing, onChange }){
+  const d = data;
+  return (
+    <div style={{padding: editing ? '4px 0' : 0}}>
+      <hr style={{border:'none',borderTop:`${d.thickness||1}px ${d.dashed?'dashed':'solid'} ${d.color||'#E6E9EF'}`,margin:0}}/>
+    </div>
+  );
+}
+
+// ============================================================
+// 15. BADGE CARD — 상단 배지 + 설명 텍스트 카드 (1~3열 그리드)
 // ============================================================
 function BadgeCard({ data, editing, onChange }){
   const d = data;
@@ -787,6 +799,7 @@ window.RENDERERS = {
   'text-block': TextBlock,
   'shape': ShapeBlock,
   'badge-card': BadgeCard,
+  'divider': Divider,
 };
 
 window.COMPONENT_META = [
@@ -800,6 +813,7 @@ window.COMPONENT_META = [
   { type:'feature-cards', label:'특징 카드', icon:'Zap', group:'컨텐츠', desc:'아이콘 + 제목 + 설명' },
   { type:'role-cards', label:'역할 카드', icon:'User', group:'컨텐츠', desc:'사용자 유형별 소개' },
   { type:'badge-card', label:'배지 카드', icon:'File', group:'컨텐츠', desc:'배지 + 설명, 1~3열 그리드' },
+  { type:'divider', label:'구분선', icon:'Minus', group:'컨텐츠', desc:'섹션을 나누는 가로선' },
   { type:'process-flow', label:'프로세스 플로우', icon:'Flow', group:'프로세스', desc:'STEP 1 → 2 → 3 흐름' },
   { type:'numbered-list', label:'번호 리스트', icon:'List', group:'프로세스', desc:'번호 원형 + 상세 설명' },
   { type:'highlight-box', label:'하이라이트 박스', icon:'Quote', group:'컨텐츠', desc:'강조/인용 텍스트 박스' },
@@ -863,6 +877,7 @@ window.DEFAULT_DATA = {
     {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,gradientFrom:'#5601FF',gradientTo:'#2882FF',desc:'설명을 입력하세요.'},
     {badge:'배지 텍스트를 입력하세요',badgeColor:'#2F6BFF',gradient:false,gradientFrom:'#5601FF',gradientTo:'#2882FF',desc:'설명을 입력하세요.'},
   ]}),
+  'divider': () => ({ color:'#E6E9EF', thickness:1, dashed:false }),
   'role-cards': () => ({ align:'left', iconGap:8, titleGap:5, descGap:8, items:[
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
     {icon:'👤',title:'역할명을 입력하세요',desc:'역할에 대한 설명을 입력하세요.',bullets:['불릿 항목을 입력하세요','불릿 항목을 입력하세요','불릿 항목을 입력하세요']},
