@@ -823,13 +823,18 @@ function VideoCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:18}}>
       {(d.items||[]).map((it,i)=>{
-        const Wrap = it.videoUrl ? 'a' : 'div';
-        const wrapProps = it.videoUrl
+        const hasFile = !!it.videoSrc;
+        const hasLink = !hasFile && !!it.videoUrl;
+        const Wrap = hasLink ? 'a' : 'div';
+        const wrapProps = hasLink
           ? { href: it.videoUrl, target:'_blank', rel:'noopener noreferrer', onClick: editing ? (e)=>e.preventDefault() : undefined }
           : {};
         return (
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
-          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: it.videoUrl ? 'pointer':'default',textDecoration:'none'}}>
+          {hasFile ? (
+            <video controls preload="metadata" poster={it.thumb||undefined} src={it.videoSrc} style={{display:'block',width:'100%',height:150,objectFit:'cover',background:'#161B26'}}/>
+          ) : (
+          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: hasLink ? 'pointer':'default',textDecoration:'none'}}>
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
               <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
                 <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
@@ -848,6 +853,7 @@ function VideoCards({ data, editing, onChange }){
               )}
             </div>
           </Wrap>
+          )}
           <div style={{padding:'14px 16px'}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:13.5,marginBottom:5}}/>
             <ET tag="span" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{fontSize:11.8,color:'var(--sub)',lineHeight:1.55,display:'block'}}/>
@@ -1109,8 +1115,8 @@ window.DEFAULT_DATA = {
     border:{ enabled:false, color:'#E2E2E2', width:1 },
     emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
-    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:''},
-    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:'',videoSrc:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:'',videoSrc:''},
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
   'badge-card': () => ({ cols:2, items:[
@@ -2305,13 +2311,33 @@ function CompEditor({ comp, onChange }){
         </Field>
         <Field label="동영상 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="영상"
-            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:'',videoUrl:''}}
+            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:'',videoUrl:'',videoSrc:''}}
             renderItem={(it,upd)=>(
               <div style={{display:'grid',gap:6}}>
                 <TextInput value={it.tag} onChange={(v)=>upd({tag:v})} placeholder="태그"/>
                 <TextInput value={it.title} onChange={(v)=>upd({title:v})} placeholder="제목"/>
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
-                <TextInput value={it.videoUrl} onChange={(v)=>upd({videoUrl:v})} placeholder="영상 링크 (YouTube, Vimeo, mp4 URL 등)"/>
+
+                {it.videoSrc ? (
+                  <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',border:'1px solid var(--line)',borderRadius:6,background:'var(--panel)'}}>
+                    <span style={{fontSize:11,color:'var(--ink)',fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🎬 영상 파일 첨부됨</span>
+                    <button onClick={()=>upd({videoSrc:''})} style={{background:'none',border:'none',color:'var(--danger)',fontSize:11,fontWeight:700,cursor:'pointer'}}>삭제</button>
+                  </div>
+                ) : (
+                  <>
+                    <label style={{padding:'8px',border:'1.5px dashed var(--line)',borderRadius:6,textAlign:'center',fontSize:11,color:'var(--blue-dark)',fontWeight:700,cursor:'pointer'}}>
+                      🎬 영상 파일 업로드
+                      <input type="file" accept="video/*" style={{display:'none'}} onChange={(e)=>{
+                        const f = e.target.files && e.target.files[0]; if(!f) return;
+                        if(f.size > 20*1024*1024 && !confirm('영상 용량이 '+(f.size/1024/1024).toFixed(1)+'MB로 커요. 결과물 파일이 함께 무거워지고 느려질 수 있어요. 계속할까요?\n(용량이 큰 영상은 유튜브 등에 올리고 "영상 링크"를 쓰는 걸 추천해요)')) { e.target.value=''; return; }
+                        const rd = new FileReader(); rd.onload = () => upd({videoSrc:rd.result, videoUrl:''}); rd.readAsDataURL(f);
+                      }}/>
+                    </label>
+                    <div style={{fontSize:10,color:'var(--mute)',margin:'-2px 0 2px'}}>용량이 크면 결과물이 무거워져요 — 짧은 영상 권장</div>
+                    <TextInput value={it.videoUrl} onChange={(v)=>upd({videoUrl:v})} placeholder="또는 영상 링크 (YouTube, Vimeo, mp4 URL 등)"/>
+                  </>
+                )}
+
                 {it.thumb ? (
                   <div style={{position:'relative',borderRadius:6,overflow:'hidden',border:'1px solid var(--line)'}}>
                     <img src={it.thumb} style={{width:'100%',display:'block',maxHeight:120,objectFit:'cover'}}/>
