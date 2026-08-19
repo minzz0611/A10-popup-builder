@@ -109,12 +109,14 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
   const [dragOverId, setDragOverId] = cUseState(null);
   const [dragOverPos, setDragOverPos] = cUseState(null); // 'before' | 'after'
   const draggingCompId = cUseRef(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = cUseState(false); // 편집 중 접기/펼치기 미리보기 (저장되지 않음)
 
   const activeSec = activeSectionId === null ? null : (state.sidebar||[]).find(s=>s.id===activeSectionId);
   const activeTab = activeSec?.tabs?.find(t=>t.id===activeTabId) || null;
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
   const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230; // 상세 화면 좌측 사이드바(목차) 너비
 
   // Current list of components based on active section (and sub-tab, if any)
   const componentList = window.getComponentList(state, activeSectionId, activeTabId);
@@ -254,11 +256,19 @@ function Canvas({ state, selectedId, activeSectionId, activeTabId, onSelect, onS
           </div>
           <div style={{position:'relative', display:'flex', flex:1, minHeight:0, borderTop:'1px solid var(--line)'}}>
             {/* Sidebar mock */}
-            <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
-              <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
-                onSelect={(id)=>onSelectSection && onSelectSection(id)}
-                onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
+            <nav style={{width: sidebarCollapsed ? 0 : sidebarWidth, flex:'none', background:'var(--panel)', padding: sidebarCollapsed ? 0 : '22px 14px', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--line)', overflow:'hidden', transition:'width .18s ease, padding .18s ease'}}>
+              <div style={{width: sidebarWidth - 28, overflowY:'auto', height:'100%'}}>
+                <SidebarNav state={state} activeSectionId={activeSectionId} activeTabId={activeTabId}
+                  onSelect={(id)=>onSelectSection && onSelectSection(id)}
+                  onSelectTab={(secId, tabId)=>{ if(secId===activeSectionId) onSelectTab(tabId); }}/>
+              </div>
             </nav>
+            <button
+              onClick={(e)=>{ e.stopPropagation(); setSidebarCollapsed(v=>!v); }}
+              title={sidebarCollapsed ? '목차 펼치기' : '목차 접기'}
+              style={{position:'absolute', top:16, left: sidebarCollapsed ? 0 : sidebarWidth, transform:'translateX(-50%) rotate('+(sidebarCollapsed?180:0)+'deg)', width:22, height:22, borderRadius:'50%', border:'1px solid var(--line)', background:'#fff', color:'var(--sub)', fontSize:12, cursor:'pointer', zIndex:3, display:'flex', alignItems:'center', justifyContent:'center', transition:'left .18s ease'}}>
+              ‹
+            </button>
             {/* Content editable */}
             <div style={{flex:1, padding:'0 44px 20px', overflowY:'auto'}}
               onDragOver={handleContainerDragOver}
