@@ -2354,7 +2354,6 @@ function CompEditor({ comp, onChange }){
                       🎬 영상 파일 업로드
                       <input type="file" accept="video/*" style={{display:'none'}} onChange={(e)=>{
                         const f = e.target.files && e.target.files[0]; if(!f) return;
-                        if(f.size > 20*1024*1024 && !confirm('영상 용량이 '+(f.size/1024/1024).toFixed(1)+'MB로 커요. 결과물 파일이 함께 무거워지고 느려질 수 있어요. 계속할까요?\n(용량이 큰 영상은 유튜브 등에 올리고 "영상 링크"를 쓰는 걸 추천해요)')) { e.target.value=''; return; }
                         const rd = new FileReader(); rd.onload = () => upd({videoSrc:rd.result, videoUrl:''}); rd.readAsDataURL(f);
                       }}/>
                     </label>
