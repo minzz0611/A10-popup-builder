@@ -36,8 +36,13 @@ button{font-family:inherit;}
 .screen{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;}
 .screen.active{display:flex;}
 #heroScreen{overflow-y:auto;}
-.body-wrap{display:flex;flex:1;min-height:0;border-top:1px solid var(--line);}
-.side-nav{width:230px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow-y:auto;}
+.body-wrap{display:flex;flex:1;min-height:0;border-top:1px solid var(--line);position:relative;}
+.side-nav{width:${sidebarWidth}px;flex:none;background:var(--panel);padding:22px 14px;border-right:1px solid var(--line);overflow:hidden;transition:width .18s ease, padding .18s ease;}
+.side-nav-inner{width:${sidebarWidth-28}px;height:100%;overflow-y:auto;}
+.side-nav.collapsed{width:0;padding-left:0;padding-right:0;border-right:none;}
+.side-nav-toggle{position:absolute;top:16px;left:${sidebarWidth}px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;transition:left .18s ease;}
+.side-nav-toggle:hover{background:var(--panel);}
+.side-nav-toggle.collapsed{left:0;transform:translateX(-50%) rotate(180deg);}
 .side-nav .grp-title{font-size:12px;color:#9199A6;font-weight:700;padding:8px 10px 4px;letter-spacing:.02em;}
 .side-nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;padding:11px 12px;border-radius:10px;font-size:14.5px;color:var(--sub);cursor:pointer;font-weight:600;margin-bottom:2px;}
 .side-nav button:hover{background:#EAECF1;color:var(--ink);}
@@ -152,6 +157,7 @@ async function buildFinalHtml(state){
   const topGap = state.popup?.topGap ?? 30; // 상세 화면 콘텐츠 맨 위, 첫 컴포넌트 앞 여백
   const windowHeight = state.popup?.windowHeight ?? 700; // 표지·상세 화면이 공유하는 팝업 창 높이
   const windowWidth = state.popup?.windowWidth ?? 1180; // 표지·상세 화면이 공유하는 팝업 창 가로 길이
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230; // 상세 화면 좌측 사이드바(목차) 너비
   const linksHtml = (footer.links||[]).map(l => `<span>${escapeHtml(l)}</span>`).join('');
   const phoneHtml = footer.phone ? `전국 어디서나 <b>${escapeHtml(footer.phone)}</b>` : '';
   const urlHtml = footer.url ? escapeHtml(footer.url) : '';
@@ -192,7 +198,8 @@ async function buildFinalHtml(state){
       ${hasDetail ? `
       <div class="screen" id="detailScreen">
         <div class="body-wrap">
-          <nav class="side-nav">${sidebarHtml}</nav>
+          <nav class="side-nav" id="sideNav"><div class="side-nav-inner">${sidebarHtml}</div></nav>
+          <button class="side-nav-toggle" id="sideNavToggle" onclick="toggleSideNav()" title="목차 접기/펼치기">&#8249;</button>
           <div class="content"><div style="height:${topGap}px"></div>${panelsHtml}</div>
         </div>
       </div>` : ''}
@@ -280,6 +287,12 @@ function closeVideoLightbox(){
   v.removeAttribute('src');
   v.load();
   document.getElementById('videoLightbox').classList.remove('show');
+}
+function toggleSideNav(){
+  var nav = document.getElementById('sideNav');
+  var btn = document.getElementById('sideNavToggle');
+  var collapsed = nav.classList.toggle('collapsed');
+  btn.classList.toggle('collapsed', collapsed);
 }
 var DONT_SHOW_KEY = 'popbuilder_${(state.meta?.title||'popup').replace(/[^a-z0-9]/gi,'_')}_dont_show';
 function onDontShowChange(checked){
