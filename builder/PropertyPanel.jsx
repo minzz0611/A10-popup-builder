@@ -719,13 +719,33 @@ function CompEditor({ comp, onChange }){
         </Field>
         <Field label="동영상 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="영상"
-            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:'',videoUrl:''}}
+            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:'',videoUrl:'',videoSrc:''}}
             renderItem={(it,upd)=>(
               <div style={{display:'grid',gap:6}}>
                 <TextInput value={it.tag} onChange={(v)=>upd({tag:v})} placeholder="태그"/>
                 <TextInput value={it.title} onChange={(v)=>upd({title:v})} placeholder="제목"/>
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
-                <TextInput value={it.videoUrl} onChange={(v)=>upd({videoUrl:v})} placeholder="영상 링크 (YouTube, Vimeo, mp4 URL 등)"/>
+
+                {it.videoSrc ? (
+                  <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',border:'1px solid var(--line)',borderRadius:6,background:'var(--panel)'}}>
+                    <span style={{fontSize:11,color:'var(--ink)',fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🎬 영상 파일 첨부됨</span>
+                    <button onClick={()=>upd({videoSrc:''})} style={{background:'none',border:'none',color:'var(--danger)',fontSize:11,fontWeight:700,cursor:'pointer'}}>삭제</button>
+                  </div>
+                ) : (
+                  <>
+                    <label style={{padding:'8px',border:'1.5px dashed var(--line)',borderRadius:6,textAlign:'center',fontSize:11,color:'var(--blue-dark)',fontWeight:700,cursor:'pointer'}}>
+                      🎬 영상 파일 업로드
+                      <input type="file" accept="video/*" style={{display:'none'}} onChange={(e)=>{
+                        const f = e.target.files && e.target.files[0]; if(!f) return;
+                        if(f.size > 20*1024*1024 && !confirm('영상 용량이 '+(f.size/1024/1024).toFixed(1)+'MB로 커요. 결과물 파일이 함께 무거워지고 느려질 수 있어요. 계속할까요?\n(용량이 큰 영상은 유튜브 등에 올리고 "영상 링크"를 쓰는 걸 추천해요)')) { e.target.value=''; return; }
+                        const rd = new FileReader(); rd.onload = () => upd({videoSrc:rd.result, videoUrl:''}); rd.readAsDataURL(f);
+                      }}/>
+                    </label>
+                    <div style={{fontSize:10,color:'var(--mute)',margin:'-2px 0 2px'}}>용량이 크면 결과물이 무거워져요 — 짧은 영상 권장</div>
+                    <TextInput value={it.videoUrl} onChange={(v)=>upd({videoUrl:v})} placeholder="또는 영상 링크 (YouTube, Vimeo, mp4 URL 등)"/>
+                  </>
+                )}
+
                 {it.thumb ? (
                   <div style={{position:'relative',borderRadius:6,overflow:'hidden',border:'1px solid var(--line)'}}>
                     <img src={it.thumb} style={{width:'100%',display:'block',maxHeight:120,objectFit:'cover'}}/>
