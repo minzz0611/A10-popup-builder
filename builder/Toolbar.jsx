@@ -1,17 +1,19 @@
 // Top toolbar - title, save/load/download/preview
 const { useState: tUseState, useRef: tUseRef } = React;
 
-function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
+function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpenPreview, onNewProject, onGoHome, onUpdateWindowHeight, onUpdateWindowWidth, onUpdateSidebarWidth, editorMode, onSetEditorMode, savedIndicator, canUndo, canRedo, onUndo, onRedo }){
   const fileRef = tUseRef(null);
   const [savedLabel, setSavedLabel] = tUseState('');
   const [showHeightPopover, setShowHeightPopover] = tUseState(false);
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230;
   const [draftHeight, setDraftHeight] = tUseState(windowHeight);
   const [draftWidth, setDraftWidth] = tUseState(windowWidth);
+  const [draftSidebarWidth, setDraftSidebarWidth] = tUseState(sidebarWidth);
 
   // 팝오버를 열 때마다 현재 저장된 값으로 임시 입력값을 초기화
-  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); } }, [showHeightPopover]);
+  React.useEffect(()=>{ if(showHeightPopover){ setDraftHeight(windowHeight); setDraftWidth(windowWidth); setDraftSidebarWidth(sidebarWidth); } }, [showHeightPopover]);
 
   const commitHeight = (v) => {
     const n = Number(v);
@@ -24,6 +26,12 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
     const clamped = Math.max(600, Math.min(1600, isNaN(n) ? 1180 : n));
     onUpdateWindowWidth(clamped);
     setDraftWidth(clamped);
+  };
+  const commitSidebarWidth = (v) => {
+    const n = Number(v);
+    const clamped = Math.max(160, Math.min(320, isNaN(n) ? 230 : n));
+    onUpdateSidebarWidth(clamped);
+    setDraftSidebarWidth(clamped);
   };
 
   React.useEffect(()=>{
@@ -143,12 +151,31 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
                   </div>
                 </div>
 
+                <div style={{fontSize:10.5,color:'var(--mute)',fontWeight:700,marginBottom:4}}>사이드바(목차) 너비</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                  <input type="range" min={160} max={320} step={10}
+                    value={Number(draftSidebarWidth) || 160}
+                    onChange={(e)=>setDraftSidebarWidth(Number(e.target.value))}
+                    style={{flex:1}}/>
+                  <div style={{flex:'none',display:'flex',alignItems:'center',gap:2}}>
+                    <input type="number" min={160} max={320}
+                      value={draftSidebarWidth}
+                      onChange={(e)=>{
+                        const raw = e.target.value;
+                        setDraftSidebarWidth(raw === '' ? '' : Number(raw));
+                      }}
+                      onKeyDown={(e)=>{ if(e.key === 'Enter') commitSidebarWidth(draftSidebarWidth); }}
+                      style={{width:52,padding:'5px 6px',border:'1px solid var(--line)',borderRadius:6,fontSize:12,fontWeight:700,textAlign:'right',fontFamily:'inherit'}}/>
+                    <span style={{fontSize:11.5,color:'var(--sub)',fontWeight:700}}>px</span>
+                  </div>
+                </div>
+
                 <div style={{display:'flex',gap:6,marginTop:10}}>
-                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); }}
+                  <button onClick={()=>{ commitHeight(draftHeight); commitWidth(draftWidth); commitSidebarWidth(draftSidebarWidth); }}
                     style={{flex:1,padding:'7px',border:'none',borderRadius:7,background:'var(--grad)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
                     저장
                   </button>
-                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); }}
+                  <button onClick={()=>{ commitHeight(700); commitWidth(1180); commitSidebarWidth(230); }}
                     style={{flex:1,padding:'7px',border:'1px solid var(--line)',borderRadius:7,background:'#fff',fontSize:11.5,fontWeight:700,color:'var(--mute)',cursor:'pointer'}}>
                     기본값
                   </button>
@@ -175,7 +202,8 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
         <button style={btnBase} onClick={onNewProject} title="새 프로젝트">
           {window.Icons.File({size:14})} 새로 만들기
         </button>
-        <button style={btnBase} onClick={()=>fileRef.current && fileRef.current.click()}>
+        <button style={btnBase} onClick={()=>fileRef.current && fileRef.current.click()}
+          title="ZIP 다운로드 시 결과물 HTML과 함께 저장되는 편집용 JSON 파일을 불러와 이어서 편집할 수 있어요">
           {window.Icons.Upload({size:14})} JSON 불러오기
         </button>
         <input ref={fileRef} type="file" accept=".json,application/json" style={{display:'none'}} onChange={(e)=>{
@@ -188,7 +216,7 @@ function Toolbar({ state, onTitleChange, onSave, onDownload, onImportJson, onOpe
           rd.readAsText(f);
           e.target.value = '';
         }}/>
-        <button style={btnBase} onClick={onSave}>
+        <button style={btnBase} onClick={onSave} title="지금까지 작업한 내용을 이 PC(브라우저)에 저장해요. 다른 PC나 브라우저에서는 불러올 수 없어요">
           {window.Icons.Save({size:14})} 저장
         </button>
         <button style={btnBase} onClick={onOpenPreview}>
