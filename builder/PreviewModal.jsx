@@ -4,6 +4,7 @@ const { useState: pmUseState } = React;
 
 function PreviewModal({ state, onClose }){
   const [screen, setScreen] = pmUseState('hero'); // hero | detail
+  const [lightboxSrc, setLightboxSrc] = pmUseState(null);
   const initialSectionId = state.activeSectionId || (state.sidebar||[])[0]?.id;
   const [activeSection, setActiveSection] = pmUseState(initialSectionId);
   const [activeTab, setActiveTab] = pmUseState(() => {
@@ -13,6 +14,12 @@ function PreviewModal({ state, onClose }){
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
+
+  // 카드 컴포넌트(예: 동영상 카드)가 클릭 시 호출할 수 있도록 전역에 노출 — 편집 캔버스에는 없는, 미리보기 전용 실제 동작
+  React.useEffect(() => {
+    window.__openVideoLightbox = (src) => setLightboxSrc(src);
+    return () => { delete window.__openVideoLightbox; };
+  }, []);
 
   const showDetail = () => {
     setScreen('detail');
@@ -106,6 +113,16 @@ function PreviewModal({ state, onClose }){
           <window.PopupFooter state={state}/>
         </div>
       </div>
+
+      {lightboxSrc && (
+        <div onClick={()=>setLightboxSrc(null)}
+          style={{position:'fixed',inset:0,background:'rgba(6,8,16,.88)',zIndex:1100,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+          <button onClick={()=>setLightboxSrc(null)}
+            style={{position:'absolute',top:20,right:20,width:38,height:38,borderRadius:'50%',border:'none',background:'rgba(255,255,255,.15)',color:'#fff',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          <video src={lightboxSrc} controls autoPlay onClick={(e)=>e.stopPropagation()}
+            style={{maxWidth:'92vw',maxHeight:'86vh',borderRadius:10,boxShadow:'0 30px 80px rgba(0,0,0,.5)'}}/>
+        </div>
+      )}
     </div>
   );
 }
