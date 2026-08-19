@@ -13,6 +13,8 @@ function PreviewModal({ state, onClose }){
   });
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
+  const sidebarWidth = state.popup?.sidebarWidth ?? 230;
+  const [sidebarCollapsed, setSidebarCollapsed] = pmUseState(false);
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
 
   // 카드 컴포넌트(예: 동영상 카드)가 클릭 시 호출할 수 있도록 전역에 노출 — 편집 캔버스에는 없는, 미리보기 전용 실제 동작
@@ -80,11 +82,17 @@ function PreviewModal({ state, onClose }){
               })}
             </div>
           ) : (
-            <div style={{display:'flex',flex:1,minHeight:0,borderTop:'1px solid var(--line)'}}>
-              <nav style={{width:230, flex:'none', background:'var(--panel)', padding:'22px 14px', borderRight:'1px solid var(--line)', overflowY:'auto'}}>
-                <window.SidebarNav state={state} activeSectionId={activeSection} activeTabId={activeTab}
-                  onSelect={selectSection} onSelectTab={(secId,tabId)=>{ if(secId===activeSection) setActiveTab(tabId); }}/>
+            <div style={{position:'relative',display:'flex',flex:1,minHeight:0,borderTop:'1px solid var(--line)'}}>
+              <nav style={{width: sidebarCollapsed ? 0 : sidebarWidth, flex:'none', background:'var(--panel)', padding: sidebarCollapsed ? 0 : '22px 14px', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--line)', overflow:'hidden', transition:'width .18s ease, padding .18s ease'}}>
+                <div style={{width: sidebarWidth - 28, height:'100%', overflowY:'auto'}}>
+                  <window.SidebarNav state={state} activeSectionId={activeSection} activeTabId={activeTab}
+                    onSelect={selectSection} onSelectTab={(secId,tabId)=>{ if(secId===activeSection) setActiveTab(tabId); }}/>
+                </div>
               </nav>
+              <button onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed ? '목차 펼치기' : '목차 접기'}
+                style={{position:'absolute',top:16,left: sidebarCollapsed ? 0 : sidebarWidth,transform:`translateX(-50%) rotate(${sidebarCollapsed?180:0}deg)`,width:22,height:22,borderRadius:'50%',border:'1px solid var(--line)',background:'#fff',color:'var(--sub)',fontSize:12,cursor:'pointer',zIndex:6,display:'flex',alignItems:'center',justifyContent:'center',transition:'left .18s ease'}}>
+                ‹
+              </button>
               <div style={{flex:1, padding:'18px 44px 20px', overflowY:'auto', minWidth:0}}>
                 {!!(activeSec?.tabs?.length) && (activeSec.navMode==='top' || activeSec.navMode==='both' || !activeSec.navMode) && (
                   <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}}>
