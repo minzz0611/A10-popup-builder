@@ -825,16 +825,16 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>{
         const hasFile = !!it.videoSrc;
         const hasLink = !hasFile && !!it.videoUrl;
+        const isPlayable = hasFile || hasLink;
         const Wrap = hasLink ? 'a' : 'div';
         const wrapProps = hasLink
           ? { href: it.videoUrl, target:'_blank', rel:'noopener noreferrer', onClick: editing ? (e)=>e.preventDefault() : undefined }
-          : {};
+          : hasFile
+            ? { className:'video-trigger', 'data-video-src': it.videoSrc, onClick: (!editing && window.__openVideoLightbox) ? ()=>window.__openVideoLightbox(it.videoSrc) : undefined }
+            : {};
         return (
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
-          {hasFile ? (
-            <video controls preload="metadata" poster={it.thumb||undefined} src={it.videoSrc} style={{display:'block',width:'100%',height:150,objectFit:'cover',background:'#161B26'}}/>
-          ) : (
-          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: hasLink ? 'pointer':'default',textDecoration:'none'}}>
+          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: isPlayable ? 'pointer':'default',textDecoration:'none'}}>
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
               <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
                 <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
@@ -853,7 +853,6 @@ function VideoCards({ data, editing, onChange }){
               )}
             </div>
           </Wrap>
-          )}
           <div style={{padding:'14px 16px'}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:13.5,marginBottom:5}}/>
             <ET tag="span" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{fontSize:11.8,color:'var(--sub)',lineHeight:1.55,display:'block'}}/>
@@ -1195,6 +1194,10 @@ button{font-family:inherit;}
 .sub-panel{display:none;}
 .sub-panel.active{display:block;}
 .reopen{position:fixed;bottom:26px;right:26px;background:var(--grad);color:#fff;border:none;padding:13px 20px;border-radius:999px;font-weight:700;font-size:13.5px;box-shadow:0 12px 30px rgba(60,80,255,.3);cursor:pointer;display:none;}
+.video-lightbox{position:fixed;inset:0;background:rgba(6,8,16,.88);z-index:1100;display:none;align-items:center;justify-content:center;padding:40px;}
+.video-lightbox.show{display:flex;}
+.video-lightbox video{max-width:92vw;max-height:86vh;border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.5);}
+.video-lightbox-close{position:absolute;top:20px;right:20px;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 `;
 
 // Render component tree to static markup using ReactDOM
@@ -1347,6 +1350,11 @@ async function buildFinalHtml(state){
 
 <button class="reopen" id="reopenBtn" onclick="reopenModal()">${escapeHtml(state.meta?.title || '팝업')} 다시 보기</button>
 
+<div class="video-lightbox" id="videoLightbox" onclick="closeVideoLightbox()">
+  <button class="video-lightbox-close" onclick="closeVideoLightbox()">&#10005;</button>
+  <video id="videoLightboxPlayer" controls onclick="event.stopPropagation()"></video>
+</div>
+
 <script>
 function goPanel(id){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
@@ -1395,6 +1403,19 @@ function reopenModal(){
   document.getElementById('reopenBtn').style.display = 'none';
   showHero();
 }
+function openVideoLightbox(src){
+  var v = document.getElementById('videoLightboxPlayer');
+  v.src = src;
+  document.getElementById('videoLightbox').classList.add('show');
+  v.play().catch(function(){});
+}
+function closeVideoLightbox(){
+  var v = document.getElementById('videoLightboxPlayer');
+  v.pause();
+  v.removeAttribute('src');
+  v.load();
+  document.getElementById('videoLightbox').classList.remove('show');
+}
 var DONT_SHOW_KEY = 'popbuilder_${(state.meta?.title||'popup').replace(/[^a-z0-9]/gi,'_')}_dont_show';
 function onDontShowChange(checked){
   if(checked){ localStorage.setItem(DONT_SHOW_KEY,'1'); } else { localStorage.removeItem(DONT_SHOW_KEY); }
@@ -1409,6 +1430,10 @@ function onDontShowChange(checked){
   var heroBtns = document.querySelectorAll('#heroScreen button');
   heroBtns.forEach(function(b){ b.addEventListener('click', function(e){ e.preventDefault(); showDetail(); }); });
   ` : ''}
+  // Wire uploaded-video thumbnails to open the lightbox player
+  document.querySelectorAll('.video-trigger').forEach(function(el){
+    el.addEventListener('click', function(){ openVideoLightbox(el.getAttribute('data-video-src')); });
+  });
 })();
 </script>
 </body>
@@ -3655,6 +3680,7 @@ const { useState: pmUseState } = React;
 
 function PreviewModal({ state, onClose }){
   const [screen, setScreen] = pmUseState('hero'); // hero | detail
+  const [lightboxSrc, setLightboxSrc] = pmUseState(null);
   const initialSectionId = state.activeSectionId || (state.sidebar||[])[0]?.id;
   const [activeSection, setActiveSection] = pmUseState(initialSectionId);
   const [activeTab, setActiveTab] = pmUseState(() => {
@@ -3664,6 +3690,12 @@ function PreviewModal({ state, onClose }){
   const windowHeight = state.popup?.windowHeight ?? 700;
   const windowWidth = state.popup?.windowWidth ?? 1180;
   const activeSec = (state.sidebar||[]).find(s=>s.id===activeSection);
+
+  // 카드 컴포넌트(예: 동영상 카드)가 클릭 시 호출할 수 있도록 전역에 노출 — 편집 캔버스에는 없는, 미리보기 전용 실제 동작
+  React.useEffect(() => {
+    window.__openVideoLightbox = (src) => setLightboxSrc(src);
+    return () => { delete window.__openVideoLightbox; };
+  }, []);
 
   const showDetail = () => {
     setScreen('detail');
@@ -3757,6 +3789,16 @@ function PreviewModal({ state, onClose }){
           <window.PopupFooter state={state}/>
         </div>
       </div>
+
+      {lightboxSrc && (
+        <div onClick={()=>setLightboxSrc(null)}
+          style={{position:'fixed',inset:0,background:'rgba(6,8,16,.88)',zIndex:1100,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+          <button onClick={()=>setLightboxSrc(null)}
+            style={{position:'absolute',top:20,right:20,width:38,height:38,borderRadius:'50%',border:'none',background:'rgba(255,255,255,.15)',color:'#fff',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          <video src={lightboxSrc} controls autoPlay onClick={(e)=>e.stopPropagation()}
+            style={{maxWidth:'92vw',maxHeight:'86vh',borderRadius:10,boxShadow:'0 30px 80px rgba(0,0,0,.5)'}}/>
+        </div>
+      )}
     </div>
   );
 }
