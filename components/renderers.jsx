@@ -564,13 +564,18 @@ function VideoCards({ data, editing, onChange }){
   return (
     <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:18}}>
       {(d.items||[]).map((it,i)=>{
-        const Wrap = it.videoUrl ? 'a' : 'div';
-        const wrapProps = it.videoUrl
+        const hasFile = !!it.videoSrc;
+        const hasLink = !hasFile && !!it.videoUrl;
+        const Wrap = hasLink ? 'a' : 'div';
+        const wrapProps = hasLink
           ? { href: it.videoUrl, target:'_blank', rel:'noopener noreferrer', onClick: editing ? (e)=>e.preventDefault() : undefined }
           : {};
         return (
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
-          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: it.videoUrl ? 'pointer':'default',textDecoration:'none'}}>
+          {hasFile ? (
+            <video controls preload="metadata" poster={it.thumb||undefined} src={it.videoSrc} style={{display:'block',width:'100%',height:150,objectFit:'cover',background:'#161B26'}}/>
+          ) : (
+          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: hasLink ? 'pointer':'default',textDecoration:'none'}}>
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
               <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
                 <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
@@ -589,6 +594,7 @@ function VideoCards({ data, editing, onChange }){
               )}
             </div>
           </Wrap>
+          )}
           <div style={{padding:'14px 16px'}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:13.5,marginBottom:5}}/>
             <ET tag="span" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{fontSize:11.8,color:'var(--sub)',lineHeight:1.55,display:'block'}}/>
@@ -850,8 +856,8 @@ window.DEFAULT_DATA = {
     border:{ enabled:false, color:'#E2E2E2', width:1 },
     emphasis:{ enabled:false, color:'#1C90FB' } }),
   'video-cards': () => ({ cols:2, items:[
-    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:''},
-    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:'',videoSrc:''},
+    {tag:'태그 입력',title:'영상 제목을 입력하세요',desc:'영상에 대한 설명을 입력하세요.',thumb:'',videoUrl:'',videoSrc:''},
   ]}),
   'highlight-box': () => ({ icon:'💡', title:'안내 제목을 입력하세요', body:'강조하고 싶은 내용을 여기에 입력하세요.' }),
   'badge-card': () => ({ cols:2, items:[
