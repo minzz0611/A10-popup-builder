@@ -266,6 +266,11 @@ function App(){
     commit(prev => ({ ...prev, popup: { ...prev.popup, windowWidth: w } }));
   };
 
+  // 상세 화면 좌측 사이드바(목차) 가로 너비
+  const handleUpdateSidebarWidth = (w) => {
+    commit(prev => ({ ...prev, popup: { ...prev.popup, sidebarWidth: w } }));
+  };
+
   // 컴포넌트를 구조화된 폼 대신 직접 입력한 HTML로 렌더링 (빈 문자열이면 구조화된 편집으로 복귀)
   const handleUpdateCustomHtml = (id, html) => {
     commit(prev => ({
@@ -537,6 +542,7 @@ function App(){
         onGoHome={goHome}
         onUpdateWindowHeight={handleUpdateWindowHeight}
         onUpdateWindowWidth={handleUpdateWindowWidth}
+        onUpdateSidebarWidth={handleUpdateSidebarWidth}
         editorMode={editorMode}
         onSetEditorMode={setEditorMode}
         savedIndicator={savedTick}
