@@ -59,6 +59,10 @@ button{font-family:inherit;}
 .sub-panel{display:none;}
 .sub-panel.active{display:block;}
 .reopen{position:fixed;bottom:26px;right:26px;background:var(--grad);color:#fff;border:none;padding:13px 20px;border-radius:999px;font-weight:700;font-size:13.5px;box-shadow:0 12px 30px rgba(60,80,255,.3);cursor:pointer;display:none;}
+.video-lightbox{position:fixed;inset:0;background:rgba(6,8,16,.88);z-index:1100;display:none;align-items:center;justify-content:center;padding:40px;}
+.video-lightbox.show{display:flex;}
+.video-lightbox video{max-width:92vw;max-height:86vh;border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.5);}
+.video-lightbox-close{position:absolute;top:20px;right:20px;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 `;
 
 // Render component tree to static markup using ReactDOM
@@ -211,6 +215,11 @@ async function buildFinalHtml(state){
 
 <button class="reopen" id="reopenBtn" onclick="reopenModal()">${escapeHtml(state.meta?.title || '팝업')} 다시 보기</button>
 
+<div class="video-lightbox" id="videoLightbox" onclick="closeVideoLightbox()">
+  <button class="video-lightbox-close" onclick="closeVideoLightbox()">&#10005;</button>
+  <video id="videoLightboxPlayer" controls onclick="event.stopPropagation()"></video>
+</div>
+
 <script>
 function goPanel(id){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
@@ -259,6 +268,19 @@ function reopenModal(){
   document.getElementById('reopenBtn').style.display = 'none';
   showHero();
 }
+function openVideoLightbox(src){
+  var v = document.getElementById('videoLightboxPlayer');
+  v.src = src;
+  document.getElementById('videoLightbox').classList.add('show');
+  v.play().catch(function(){});
+}
+function closeVideoLightbox(){
+  var v = document.getElementById('videoLightboxPlayer');
+  v.pause();
+  v.removeAttribute('src');
+  v.load();
+  document.getElementById('videoLightbox').classList.remove('show');
+}
 var DONT_SHOW_KEY = 'popbuilder_${(state.meta?.title||'popup').replace(/[^a-z0-9]/gi,'_')}_dont_show';
 function onDontShowChange(checked){
   if(checked){ localStorage.setItem(DONT_SHOW_KEY,'1'); } else { localStorage.removeItem(DONT_SHOW_KEY); }
@@ -273,6 +295,10 @@ function onDontShowChange(checked){
   var heroBtns = document.querySelectorAll('#heroScreen button');
   heroBtns.forEach(function(b){ b.addEventListener('click', function(e){ e.preventDefault(); showDetail(); }); });
   ` : ''}
+  // Wire uploaded-video thumbnails to open the lightbox player
+  document.querySelectorAll('.video-trigger').forEach(function(el){
+    el.addEventListener('click', function(){ openVideoLightbox(el.getAttribute('data-video-src')); });
+  });
 })();
 </script>
 </body>
