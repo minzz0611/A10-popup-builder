@@ -719,12 +719,13 @@ function CompEditor({ comp, onChange }){
         </Field>
         <Field label="동영상 카드">
           <ArrayEditor items={d.items} onChange={(v)=>set('items',v)} itemLabel="영상"
-            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:''}}
+            defaultItem={{tag:'DEMO',title:'제목',desc:'설명',thumb:'',videoUrl:''}}
             renderItem={(it,upd)=>(
               <div style={{display:'grid',gap:6}}>
                 <TextInput value={it.tag} onChange={(v)=>upd({tag:v})} placeholder="태그"/>
                 <TextInput value={it.title} onChange={(v)=>upd({title:v})} placeholder="제목"/>
                 <TextInput value={it.desc} onChange={(v)=>upd({desc:v})} multiline placeholder="설명"/>
+                <TextInput value={it.videoUrl} onChange={(v)=>upd({videoUrl:v})} placeholder="영상 링크 (YouTube, Vimeo, mp4 URL 등)"/>
                 {it.thumb ? (
                   <div style={{position:'relative',borderRadius:6,overflow:'hidden',border:'1px solid var(--line)'}}>
                     <img src={it.thumb} style={{width:'100%',display:'block',maxHeight:120,objectFit:'cover'}}/>
