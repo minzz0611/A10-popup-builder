@@ -566,16 +566,16 @@ function VideoCards({ data, editing, onChange }){
       {(d.items||[]).map((it,i)=>{
         const hasFile = !!it.videoSrc;
         const hasLink = !hasFile && !!it.videoUrl;
+        const isPlayable = hasFile || hasLink;
         const Wrap = hasLink ? 'a' : 'div';
         const wrapProps = hasLink
           ? { href: it.videoUrl, target:'_blank', rel:'noopener noreferrer', onClick: editing ? (e)=>e.preventDefault() : undefined }
-          : {};
+          : hasFile
+            ? { className:'video-trigger', 'data-video-src': it.videoSrc, onClick: (!editing && window.__openVideoLightbox) ? ()=>window.__openVideoLightbox(it.videoSrc) : undefined }
+            : {};
         return (
         <div key={i} style={{border:'1px solid var(--line)',borderRadius:14,overflow:'hidden',boxShadow:'0 10px 26px rgba(20,30,70,.08)',background:'#fff'}}>
-          {hasFile ? (
-            <video controls preload="metadata" poster={it.thumb||undefined} src={it.videoSrc} style={{display:'block',width:'100%',height:150,objectFit:'cover',background:'#161B26'}}/>
-          ) : (
-          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: hasLink ? 'pointer':'default',textDecoration:'none'}}>
+          <Wrap {...wrapProps} style={{display:'block',background:'#161B26',height:150,cursor: isPlayable ? 'pointer':'default',textDecoration:'none'}}>
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',backgroundImage: it.thumb ? `url(${it.thumb})` : 'none',backgroundSize:'cover',backgroundPosition:'center'}}>
               <span style={{position:'absolute',top:10,left:10,background:'rgba(255,255,255,.14)',color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 10px',borderRadius:999,backdropFilter:'blur(4px)',display: it.tag ? 'inline-block' : 'none'}}>
                 <ET tag="span" value={it.tag} onChange={(v)=>upd(i,'tag',v)} editing={editing}/>
@@ -594,7 +594,6 @@ function VideoCards({ data, editing, onChange }){
               )}
             </div>
           </Wrap>
-          )}
           <div style={{padding:'14px 16px'}}>
             <ET tag="b" value={it.title} onChange={(v)=>upd(i,'title',v)} editing={editing} style={{display:'block',fontSize:13.5,marginBottom:5}}/>
             <ET tag="span" value={it.desc} onChange={(v)=>upd(i,'desc',v)} editing={editing} multiline style={{fontSize:11.8,color:'var(--sub)',lineHeight:1.55,display:'block'}}/>
